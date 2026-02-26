@@ -42,6 +42,7 @@ api_router.include_router(users.router)
 # Include the main API router in the app
 app.include_router(api_router)
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -56,6 +57,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "error": {"code": "INTERNAL_ERROR", "message": "An internal error occurred"}}
+    )
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
