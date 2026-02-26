@@ -1,53 +1,109 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Branches from './pages/Branches';
+import Zones from './pages/Zones';
+import Users from './pages/Users';
+import { Button } from './components/ui/button';
+import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const PrivateRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+  
+  return user ? children : <Navigate to="/login" />;
+};
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+const AdminLayout = ({ children }) => {
+  const { user, logout } = useAuth();
+  
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      <nav className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center space-x-reverse space-x-8">
+              <Link to="/admin" className="text-xl font-bold">
+                نظام إدارة منطقة اللعب
+              </Link>
+              <div className="flex space-x-reverse space-x-4">
+                <Link to="/admin" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                  الرئيسية
+                </Link>
+                {['ADMIN', 'MANAGER'].includes(user?.role) && (
+                  <>
+                    <Link to="/admin/branches" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                      الفروع
+                    </Link>
+                    <Link to="/admin/zones" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                      المناطق
+                    </Link>
+                    <Link to="/admin/users" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                      المستخدمون
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center space-x-reverse space-x-4">
+              <span className="text-sm text-gray-700">{user?.name}</span>
+              <Button variant="outline" size="sm" onClick={logout}>
+                تسجيل الخروج
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
     </div>
   );
 };
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={
+            <PrivateRoute>
+              <AdminLayout>
+                <Dashboard />
+              </AdminLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/admin/branches" element={
+            <PrivateRoute>
+              <AdminLayout>
+                <Branches />
+              </AdminLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/admin/zones" element={
+            <PrivateRoute>
+              <AdminLayout>
+                <Zones />
+              </AdminLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/admin/users" element={
+            <PrivateRoute>
+              <AdminLayout>
+                <Users />
+              </AdminLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/" element={<Navigate to="/admin" />} />
         </Routes>
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
