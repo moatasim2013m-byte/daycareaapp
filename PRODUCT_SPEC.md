@@ -644,4 +644,72 @@ CANCELLED (user/admin action)
 
 ---
 
+## UI STYLE LOCK (Peekaboo Playful Design System)
+
+**Design Philosophy**: "Playful Shell + Professional Data Surfaces"
+
+### Visual Style
+- **Fun playful UI**: Rounded, bubbly, friendly for customer-facing features
+- **Professional surfaces**: Clean, serious for money/data (POS, reports, tables, receipts)
+- Cards: `24px` radius, `2px` light gray borders, soft shadows
+- Inputs: `16px` radius
+- Badges: Pill shape (`999px` radius)
+- Buttons: `20px` radius with bouncy hover (`scale(1.02)`)
+
+### Color Tokens (Design System)
+```
+Primary Yellow: #FFD93B  (main actions, highlights)
+Blue: #00BBF9           (secondary actions, bookings)
+Red: #FF595E            (danger, errors, overdue)
+Orange: #FF924C         (warnings, pending, day care)
+Green: #8AC926          (success, active, POS)
+Outline Brown: #4A2C2A  (small accents only)
+```
+
+### Module Color Assignments (One Accent Per Screen)
+- **POS**: Green
+- **Bookings**: Blue
+- **Day Care**: Orange
+- **Memberships**: Yellow
+- **Reports**: Blue
+- **Settings**: Gray
+
+### Typography (Arabic-First)
+- **Headings**: Bold (700), round style
+- **Body**: Regular (400), readable
+- **POS Numbers**: Bold (700) + larger size for clarity
+- **Fonts**: Noto Sans Arabic / Cairo (Arabic), Inter (Latin)
+
+### Money-Safe Design Rules
+- **Tables**: White background, subtle borders, bold totals row
+- **Receipts**: Monochrome, print-friendly, clean layout
+- **Invoices**: Professional PDF format
+- **Refund/Void**: Strong red confirmation modal required
+- **Audit Logs**: Clean table with color-coded actions
+
+### Component Standards
+- **Buttons**: Always rounded + slightly bouncy hover
+- **Cards**: White + 2px border + optional colored top strip (4px) for modules
+- **Badges**: Pill-shaped status indicators (Active=Green, Overdue=Red, Pending=Orange, Confirmed=Blue)
+- **Icons**: Rounded/filled style (not sharp line icons)
+- **Forms**: 1-2 column max, big tap targets (44px min), clear labels above inputs
+- **Empty States**: Playful illustrations + encouraging text + primary CTA button
+
+### Touch & Responsive
+- **Minimum tap target**: 44px × 44px
+- **POS buttons**: Larger (60px height) for easy tapping
+- **RTL support**: Full right-to-left layout, reversed flexbox, mirrored icons
+
+### Anti-Patterns (Avoid)
+- ❌ Sharp corners (use 16px+ radius)
+- ❌ Thin line icons (use filled/rounded)
+- ❌ Rainbow layouts (one accent per screen)
+- ❌ Harsh shadows (use soft only)
+- ❌ Thin fonts (use 400 or 700)
+- ❌ Playful styles on money tables (keep professional)
+
+**Complete Style Guide**: See `/app/UI_STYLE_GUIDE.md` for full design system specification with CSS tokens, component specs, and implementation checklist.
+
+---
+
 **END OF PRODUCT SPEC**
