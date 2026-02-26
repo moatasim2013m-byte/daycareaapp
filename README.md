@@ -17,15 +17,12 @@ This repository contains:
 - Python 3.11+
 - Node.js 18+ and Yarn 1.x (or npm)
 - MongoDB instance (local or hosted)
-- Optional: Docker / Docker Compose
 
 ---
 
-## Quick Preview Options
+## Backend: Local Run
 
-### Option A: Native run (recommended for development)
-
-#### Backend
+### 1) Create virtual environment and install dependencies
 
 ```bash
 cd backend
@@ -33,6 +30,8 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+### 2) Configure environment
 
 Create `backend/.env`:
 
@@ -42,19 +41,32 @@ DB_NAME=daycareaapp
 CORS_ORIGINS=http://localhost:3000
 ```
 
-Run backend:
+### 3) Start FastAPI server
 
 ```bash
 cd backend
 uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-#### Frontend
+### 4) Verify backend
+
+- Health/root endpoint: `GET http://localhost:8000/api/`
+- Status endpoint: `GET http://localhost:8000/api/status`
+
+---
+
+## Frontend: Local Run
+
+### 1) Install dependencies
 
 ```bash
 cd frontend
 yarn install
 ```
+
+(Alternative with npm: `npm install`)
+
+### 2) Configure environment
 
 Create `frontend/.env`:
 
@@ -62,53 +74,16 @@ Create `frontend/.env`:
 REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
-Run frontend:
+### 3) Start frontend dev server
 
 ```bash
 cd frontend
 yarn start
 ```
 
-Preview at:
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000/api/`
+### 4) Verify frontend
 
----
-
-### Option B: Docker Compose preview (single command)
-
-This starts MongoDB + backend + frontend together.
-
-```bash
-docker compose up --build
-```
-
-Preview at:
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000/api/`
-
----
-
-## Cloud Run Deployment (important for your screenshot)
-
-Because this is a monorepo, **do not use `/Dockerfile`** in Cloud Run source deploy unless you create one at repo root.
-Use one service per app and set source location to:
-
-- Backend service Dockerfile: `/backend/Dockerfile`
-- Frontend service Dockerfile: `/frontend/Dockerfile`
-
-### Backend Cloud Run settings
-- Source location: `/backend/Dockerfile`
-- Port: `8080` (already used by Dockerfile command)
-- Required env vars:
-  - `MONGO_URL`
-  - `DB_NAME`
-  - `CORS_ORIGINS` (set to frontend Cloud Run URL)
-
-### Frontend Cloud Run settings
-- Source location: `/frontend/Dockerfile`
-- Build arg:
-  - `REACT_APP_BACKEND_URL=https://<your-backend-cloud-run-url>`
+Open `http://localhost:3000` and ensure the browser console logs the backend root message from `/api/`.
 
 ---
 
@@ -118,7 +93,6 @@ Use one service per app and set source location to:
 
 ```bash
 cd backend
-python -m py_compile server.py
 pytest
 ```
 
@@ -138,3 +112,5 @@ yarn build
 - `DATA_MODEL.md`
 - `API_CONTRACT.md`
 - `ACCEPTANCE_TESTS.md`
+
+These documents capture the current baseline plus the target expansion model requested for upcoming phases.
