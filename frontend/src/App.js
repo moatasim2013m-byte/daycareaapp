@@ -138,6 +138,11 @@ function App() {
               </AdminLayout>
             </PrivateRoute>
           } />
+          <Route path="/pos" element={
+            <PrivateRoute>
+              <POS />
+            </PrivateRoute>
+          } />
           <Route path="/" element={<Navigate to="/admin" />} />
         </Routes>
       </BrowserRouter>
