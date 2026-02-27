@@ -65,11 +65,32 @@ Build a complete management platform for an indoor playground and daycare center
 
 **Test Coverage:** 100% backend, 100% frontend
 
-### Phase 3 - Waivers (PENDING)
-- Waiver templates
-- Digital signature capture
-- Guardian/child waiver signing
-- Waiver verification and expiry
+### Phase 3 - Customer Check-In + Subscriptions ✅ COMPLETED (Feb 27, 2026)
+**Backend:**
+- Customer Registration API (`/api/customers`)
+  - Register child with physical card (1 card = 1 child)
+  - Age validation (4 years / 48 months or below)
+  - Guardian info (name, phone optional)
+  - Waiver acceptance tracking
+- Check-In API (`/api/checkin`)
+  - Card scan → status detection (NEW_CARD, WAIVER_REQUIRED, READY_TO_CHECK_IN, ALREADY_CHECKED_IN)
+  - Check-in with hourly or subscription payment
+  - Check-out with duration tracking
+  - Active sessions list
+- Subscriptions API (`/api/subscriptions`)
+  - Create subscription (PENDING status)
+  - Activate on first check-in (30-day countdown)
+  - Auto-activation feature
+
+**Frontend:**
+- Check-In page (`/checkin`) with blue accent theme
+- Card scan input with instant feedback
+- New customer registration dialog
+- Waiver acceptance dialog
+- Subscription/hourly check-in options
+- Active sessions panel with checkout
+
+**Test Coverage:** 100% backend (19 tests), 100% frontend
 
 ### Phase 4 - Booking + Capacity (PENDING)
 - Slot-based booking engine
