@@ -12,9 +12,9 @@ class OperatingHours(BaseModel):
 
 class BranchSettings(BaseModel):
     default_grace_period_minutes: int = 10
-    default_overdue_rate_per_15min: float = 30.00
-    currency: str = "SAR"
-    tax_rate: float = 0.15
+    default_overdue_rate_per_15min: float = 5.00  # JOD
+    currency: str = "JOD"
+    tax_rate: float = 0.16  # Jordan 16% sales tax
     language_default: str = "ar"
 
 
