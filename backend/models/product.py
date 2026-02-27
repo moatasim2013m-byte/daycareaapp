@@ -66,13 +66,13 @@ class ProductResponse(BaseModel):
     sku: str
     name_ar: str
     name_en: str
-    description_ar: Optional[str]
-    description_en: Optional[str]
+    description_ar: Optional[str] = None
+    description_en: Optional[str] = None
     category: ProductCategory
     product_type: ProductType
-    zone_id: Optional[str]
+    zone_id: Optional[str] = None
     price: float
-    tax_rate: float
-    inventory_tracked: bool
-    active: bool
+    tax_rate: float = 0.15
+    inventory_tracked: bool = False
+    active: bool = True
     created_at: datetime
