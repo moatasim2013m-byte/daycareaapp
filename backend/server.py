@@ -1,89 +1,158 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
+from contextlib import asynccontextmanager
 import os
-import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
+from dotenv import load_dotenv
 
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+# Load environment
+load_dotenv()
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+MONGO_URL = os.environ.get("MONGO_URL")
+DB_NAME = os.environ.get("DB_NAME", "daycare_db")
 
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+client = None
+db = None
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global client, db
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+    # Startup
+    client = AsyncIOMotorClient(MONGO_URL)
+    db = client[DB_NAME]
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    # Create indexes
+    await create_indexes()
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+    print(f"Connected to MongoDB: {DB_NAME}")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    yield
     
-    return status_checks
+    # Shutdown
+    client.close()
+    print("MongoDB connection closed")
 
-# Include the router in the main app
-app.include_router(api_router)
 
+async def create_indexes():
+    """Create required indexes for performance"""
+    # Users
+    await db.users.create_index("email", unique=True)
+    await db.users.create_index("user_id", unique=True)
+    
+    # Children
+    await db.children.create_index("child_id", unique=True)
+    await db.children.create_index("guardian_id")
+    
+    # Products
+    await db.products.create_index("product_id", unique=True)
+    await db.products.create_index("category")
+    
+    # Orders
+    await db.orders.create_index("order_id", unique=True)
+    await db.orders.create_index("order_number", unique=True)
+    await db.orders.create_index("guardian_id")
+    await db.orders.create_index([("status", 1), ("created_at", -1)])
+    
+    # Sessions - critical for active session queries
+    await db.sessions.create_index("session_id", unique=True)
+    await db.sessions.create_index("child_id")
+    await db.sessions.create_index("state")
+    await db.sessions.create_index([("state", 1), ("checkin_at", -1)])
+    await db.sessions.create_index([("child_id", 1), ("state", 1)])
+    
+    # Subscriptions
+    await db.subscriptions.create_index("subscription_id", unique=True)
+    await db.subscriptions.create_index("child_id")
+    await db.subscriptions.create_index([("child_id", 1), ("status", 1)])
+    
+    # Visit Packs
+    await db.visit_packs.create_index("pack_id", unique=True)
+    await db.visit_packs.create_index("child_id")
+    await db.visit_packs.create_index([("child_id", 1), ("status", 1)])
+    
+    # Entitlement Usage
+    await db.entitlement_usage.create_index("usage_id", unique=True)
+    await db.entitlement_usage.create_index([("subscription_id", 1), ("usage_date", 1)])
+    
+    # Audit logs
+    await db.audit_logs.create_index("audit_id", unique=True)
+    await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
+    
+    # Payments
+    await db.payments.create_index("payment_id", unique=True)
+    await db.payments.create_index("order_id")
+
+
+# Create FastAPI app
+app = FastAPI(
+    title="Daycare Management System",
+    description="نظام إدارة الحضانة - Daycare + Sand Area Management",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Unhandled error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "حدث خطأ في النظام"
+            }
+        }
+    )
+
+
+# Import routers
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports
+
+
+# Create API router with /api prefix
+from fastapi import APIRouter
+api_router = APIRouter(prefix="/api")
+
+# Include all routers
+api_router.include_router(auth.router)
+api_router.include_router(children.router)
+api_router.include_router(products.router)
+api_router.include_router(orders.router)
+api_router.include_router(subscriptions.router)
+api_router.include_router(sessions.router)
+api_router.include_router(entitlements.router)
+api_router.include_router(reports.router)
+
+# Mount API router
+app.include_router(api_router)
+
+
+# Health check
+@app.get("/api/")
+async def health_check():
+    return {
+        "message": "Daycare Management System API",
+        "status": "operational",
+        "version": "1.0.0"
+    }
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "healthy", "database": "connected" if db is not None else "disconnected"}
