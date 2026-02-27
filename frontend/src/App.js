@@ -154,6 +154,11 @@ function App() {
               <POS />
             </PrivateRoute>
           } />
+          <Route path="/checkin" element={
+            <PrivateRoute>
+              <CheckIn />
+            </PrivateRoute>
+          } />
           <Route path="/" element={<Navigate to="/admin" />} />
         </Routes>
       </BrowserRouter>
