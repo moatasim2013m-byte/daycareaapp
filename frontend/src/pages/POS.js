@@ -458,7 +458,7 @@ const POS = () => {
               {cart.map(item => (
                 <div key={item.product_id} className="flex justify-between text-sm">
                   <span>{item.name_ar} × {item.quantity}</span>
-                  <span>{(item.price * item.quantity).toFixed(2)} ريال</span>
+                  <span>{(item.price * item.quantity).toFixed(2)} د.أ</span>
                 </div>
               ))}
             </div>
