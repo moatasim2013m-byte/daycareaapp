@@ -523,15 +523,15 @@ const POS = () => {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">المجموع الفرعي</span>
-                  <span>{lastOrder.subtotal.toFixed(2)} ريال</span>
+                  <span>{lastOrder.subtotal.toFixed(2)} د.أ</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">الضريبة</span>
-                  <span>{lastOrder.tax_amount.toFixed(2)} ريال</span>
+                  <span>{lastOrder.tax_amount.toFixed(2)} د.أ</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2">
                   <span>الإجمالي</span>
-                  <span className="text-playful-green">{lastOrder.total_amount.toFixed(2)} ريال</span>
+                  <span className="text-playful-green">{lastOrder.total_amount.toFixed(2)} د.أ</span>
                 </div>
               </div>
             )}
