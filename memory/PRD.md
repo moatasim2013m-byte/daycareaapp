@@ -10,6 +10,13 @@ Build a complete management platform for an indoor playground and daycare center
 - Inventory management
 - Reporting
 
+## Localization: Jordan 🇯🇴
+- **Currency**: JOD (دينار أردني / د.أ)
+- **Location**: Irbid, Jordan
+- **Address**: ابو راشد مجمع السيف التجاري, Wasfi At-Tal St., Irbid 11225
+- **Timezone**: Asia/Amman
+- **Tax Rate**: 16% (Jordan sales tax)
+
 ## Core Requirements
 - **Tech Stack**: FastAPI backend, React frontend, MongoDB database
 - **Language**: Arabic-first UI with RTL support
