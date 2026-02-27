@@ -126,22 +126,29 @@ Build a complete management platform for an indoor playground and daycare center
 ├── backend/
 │   ├── models/
 │   │   ├── branch.py
-│   │   ├── order.py      ✅
-│   │   ├── product.py    ✅
+│   │   ├── checkin.py       ✅ NEW
+│   │   ├── customer.py      ✅ NEW
+│   │   ├── order.py
+│   │   ├── product.py
+│   │   ├── subscription.py  ✅ NEW
 │   │   ├── user.py
 │   │   └── zone.py
 │   ├── routers/
 │   │   ├── auth.py
 │   │   ├── branches.py
-│   │   ├── orders.py     ✅
-│   │   ├── products.py   ✅
+│   │   ├── checkin.py       ✅ NEW
+│   │   ├── customers.py     ✅ NEW
+│   │   ├── orders.py
+│   │   ├── products.py
+│   │   ├── subscriptions.py ✅ NEW
 │   │   ├── users.py
 │   │   └── zones.py
 │   └── server.py
 ├── frontend/
 │   └── src/
 │       ├── pages/
-│       │   ├── POS.js    ✅
+│       │   ├── CheckIn.js   ✅ NEW
+│       │   ├── POS.js
 │       │   ├── Dashboard.js
 │       │   ├── Branches.js
 │       │   ├── Zones.js
