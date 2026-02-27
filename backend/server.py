@@ -40,6 +40,9 @@ api_router.include_router(zones.router)
 api_router.include_router(users.router)
 api_router.include_router(products.router)
 api_router.include_router(orders.router)
+api_router.include_router(customers.router)
+api_router.include_router(subscriptions.router)
+api_router.include_router(checkin.router)
 
 # Include the main API router in the app
 app.include_router(api_router)
