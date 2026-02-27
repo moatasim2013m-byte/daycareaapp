@@ -503,8 +503,8 @@ const POS = () => {
 
       {/* Receipt Dialog */}
       <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-        <DialogContent className="rounded-modal max-w-md" dir="rtl">
-          <div className="text-center py-6">
+        <DialogContent className="rounded-modal max-w-md" dir="rtl" aria-describedby="receipt-description">
+          <div id="receipt-description" className="text-center py-6">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-playful-green/10 flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-playful-green" />
             </div>
