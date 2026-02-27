@@ -50,7 +50,7 @@ class Branch(BaseModel):
     city: str
     phone: str
     email: str
-    timezone: str = "Asia/Riyadh"
+    timezone: str = "Asia/Amman"
     settings: BranchSettings = Field(default_factory=BranchSettings)
     status: str = "active"  # active | inactive
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
