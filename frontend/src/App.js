@@ -6,7 +6,9 @@ import Dashboard from './pages/Dashboard';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
 import Users from './pages/Users';
+import POS from './pages/POS';
 import { Button } from './components/ui/button';
+import { Receipt, LayoutDashboard, Building2, MapPin, Users as UsersIcon } from 'lucide-react';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
