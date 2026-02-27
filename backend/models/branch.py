@@ -25,7 +25,7 @@ class BranchCreate(BaseModel):
     city: str
     phone: str
     email: str
-    timezone: str = "Asia/Riyadh"
+    timezone: str = "Asia/Amman"
     settings: Optional[BranchSettings] = None
 
 
