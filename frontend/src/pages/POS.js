@@ -356,7 +356,7 @@ const POS = () => {
                               {item.name_ar}
                             </h4>
                             <p className="text-sm text-gray-500">
-                              {item.price.toFixed(2)} ريال
+                              {item.price.toFixed(2)} د.أ
                             </p>
                           </div>
                           
