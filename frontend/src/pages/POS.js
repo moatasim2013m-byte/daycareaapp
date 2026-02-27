@@ -443,7 +443,7 @@ const POS = () => {
 
       {/* Checkout Dialog */}
       <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-        <DialogContent className="rounded-modal max-w-md" dir="rtl">
+        <DialogContent className="rounded-modal max-w-md" dir="rtl" aria-describedby="checkout-description">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <CreditCard className="w-6 h-6 text-playful-green" />
@@ -451,7 +451,7 @@ const POS = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div id="checkout-description" className="space-y-4 py-4">
             {/* Order Summary */}
             <div className="bg-gray-50 rounded-input p-4 space-y-2">
               <h4 className="font-semibold text-gray-900 mb-3">ملخص الطلب</h4>
