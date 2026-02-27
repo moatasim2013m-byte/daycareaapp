@@ -30,22 +30,52 @@ const AdminLayout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-reverse space-x-8">
-              <Link to="/admin" className="text-xl font-bold">
+              <Link to="/admin" className="text-xl font-bold text-gray-900">
                 نظام إدارة منطقة اللعب
               </Link>
-              <div className="flex space-x-reverse space-x-4">
-                <Link to="/admin" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+              <div className="flex space-x-reverse space-x-2">
+                <Link 
+                  to="/admin" 
+                  className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium hover:bg-gray-100 transition-colors"
+                  data-testid="nav-dashboard"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
                   الرئيسية
                 </Link>
+                {['ADMIN', 'MANAGER', 'CASHIER'].includes(user?.role) && (
+                  <Link 
+                    to="/pos" 
+                    className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium bg-playful-green/10 text-playful-green hover:bg-playful-green/20 transition-colors"
+                    data-testid="nav-pos"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    نقطة البيع
+                  </Link>
+                )}
                 {['ADMIN', 'MANAGER'].includes(user?.role) && (
                   <>
-                    <Link to="/admin/branches" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                    <Link 
+                      to="/admin/branches" 
+                      className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium hover:bg-gray-100 transition-colors"
+                      data-testid="nav-branches"
+                    >
+                      <Building2 className="w-4 h-4" />
                       الفروع
                     </Link>
-                    <Link to="/admin/zones" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                    <Link 
+                      to="/admin/zones" 
+                      className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium hover:bg-gray-100 transition-colors"
+                      data-testid="nav-zones"
+                    >
+                      <MapPin className="w-4 h-4" />
                       المناطق
                     </Link>
-                    <Link to="/admin/users" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100">
+                    <Link 
+                      to="/admin/users" 
+                      className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium hover:bg-gray-100 transition-colors"
+                      data-testid="nav-users"
+                    >
+                      <UsersIcon className="w-4 h-4" />
                       المستخدمون
                     </Link>
                   </>
@@ -54,7 +84,13 @@ const AdminLayout = ({ children }) => {
             </div>
             <div className="flex items-center space-x-reverse space-x-4">
               <span className="text-sm text-gray-700">{user?.name}</span>
-              <Button variant="outline" size="sm" onClick={logout}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={logout}
+                className="rounded-button"
+                data-testid="logout-btn"
+              >
                 تسجيل الخروج
               </Button>
             </div>
