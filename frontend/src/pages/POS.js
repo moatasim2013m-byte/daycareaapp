@@ -294,7 +294,7 @@ const POS = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-xl font-bold text-playful-green">
                             {product.price.toFixed(2)}
-                            <span className="text-sm font-normal text-gray-500 mr-1">ريال</span>
+                            <span className="text-sm font-normal text-gray-500 mr-1">د.أ</span>
                           </span>
                           
                           {cartItem && (
