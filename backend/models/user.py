@@ -1,60 +1,47 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional, Literal
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Literal
 from datetime import datetime, timezone
 import uuid
 
-
-UserRole = Literal["ADMIN", "MANAGER", "CASHIER", "RECEPTION", "STAFF", "PARENT"]
-
+UserRole = Literal["ADMIN", "RECEPTION", "STAFF", "PARENT"]
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
-    name: str
-    phone: str
-    role: UserRole
-    branch_id: Optional[str] = None  # Required for non-ADMIN roles
-    preferred_language: str = "ar"
-
+    display_name: str
+    phone: Optional[str] = None
+    role: UserRole = "PARENT"
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
-
 
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    email: EmailStr
+    email: str
     password_hash: str
-    name: str
-    phone: str
-    role: UserRole
-    branch_id: Optional[str] = None
-    preferred_language: str = "ar"
-    status: str = "active"  # active | inactive | suspended
-    last_login: Optional[datetime] = None
+    display_name: str
+    phone: Optional[str] = None
+    role: UserRole = "PARENT"
+    is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
+    last_login_at: Optional[datetime] = None
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     user_id: str
     email: str
-    name: str
-    phone: str
+    display_name: str
+    phone: Optional[str] = None
     role: UserRole
-    branch_id: Optional[str]
-    preferred_language: str
-    status: str
+    is_active: bool
     created_at: datetime
-
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
-    expires_at: datetime
