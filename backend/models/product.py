@@ -19,7 +19,7 @@ class ProductCreate(BaseModel):
     product_type: ProductType
     zone_id: Optional[str] = None  # For admission products
     price: float
-    tax_rate: float = 0.15  # 15% VAT default
+    tax_rate: float = 0.16  # Jordan 16% sales tax
     inventory_tracked: bool = False
     inventory_item_id: Optional[str] = None
 
