@@ -8,44 +8,67 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
     
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-    try {
-      const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: userData } = response.data;
-      
-      localStorage.setItem('auth_token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Login failed' 
-      };
-    }
+    const response = await api.post('/auth/login', { email, password });
+    const { access_token, user: userData } = response.data;
+    
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    
+    setUser(userData);
+    return userData;
+  };
+
+  const register = async (data) => {
+    const response = await api.post('/auth/register', data);
+    const { access_token, user: userData } = response.data;
+    
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    
+    setUser(userData);
+    return userData;
   };
 
   const logout = () => {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
+    delete api.defaults.headers.common['Authorization'];
     setUser(null);
-    window.location.href = '/login';
+  };
+
+  const value = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'ADMIN',
+    isStaff: ['ADMIN', 'RECEPTION', 'STAFF'].includes(user?.role),
+    isParent: user?.role === 'PARENT'
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
