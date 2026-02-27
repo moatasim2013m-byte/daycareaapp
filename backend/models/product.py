@@ -50,7 +50,7 @@ class Product(BaseModel):
     product_type: ProductType
     zone_id: Optional[str] = None
     price: float
-    tax_rate: float = 0.15
+    tax_rate: float = 0.16
     inventory_tracked: bool = False
     inventory_item_id: Optional[str] = None
     active: bool = True
@@ -72,7 +72,7 @@ class ProductResponse(BaseModel):
     product_type: ProductType
     zone_id: Optional[str] = None
     price: float
-    tax_rate: float = 0.15
+    tax_rate: float = 0.16
     inventory_tracked: bool = False
     active: bool = True
     created_at: datetime
