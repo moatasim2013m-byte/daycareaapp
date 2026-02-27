@@ -139,7 +139,7 @@ const POS = () => {
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.15; // 15% VAT
+  const tax = subtotal * 0.16; // 16% Jordan sales tax
   const total = subtotal + tax;
 
   // Process checkout
