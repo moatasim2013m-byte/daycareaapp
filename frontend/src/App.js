@@ -53,6 +53,16 @@ const AdminLayout = ({ children }) => {
                     نقطة البيع
                   </Link>
                 )}
+                {['ADMIN', 'MANAGER', 'CASHIER', 'ATTENDANT'].includes(user?.role) && (
+                  <Link 
+                    to="/checkin" 
+                    className="flex items-center gap-2 px-3 py-2 rounded-button text-sm font-medium bg-playful-blue/10 text-playful-blue hover:bg-playful-blue/20 transition-colors"
+                    data-testid="nav-checkin"
+                  >
+                    <Scan className="w-4 h-4" />
+                    تسجيل الدخول
+                  </Link>
+                )}
                 {['ADMIN', 'MANAGER'].includes(user?.role) && (
                   <>
                     <Link 
