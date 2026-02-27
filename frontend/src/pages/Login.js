@@ -1,82 +1,162 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Baby, LogIn, UserPlus } from 'lucide-react';
 
 const Login = () => {
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  
+  const { login, register } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    const result = await login(email, password);
     
-    if (result.success) {
-      window.location.href = '/admin';
-    } else {
-      setError(result.error);
+    try {
+      if (isRegister) {
+        await register({
+          email,
+          password,
+          display_name: displayName,
+          phone: phone || null,
+          role: 'PARENT'
+        });
+      } else {
+        await login(email, password);
+      }
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'حدث خطأ');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">تسجيل الدخول</CardTitle>
-          <CardDescription className="text-center">
-            نظام إدارة منطقة اللعب
-          </CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+      <Card className="w-full max-w-md rounded-2xl shadow-xl">
+        <CardHeader className="text-center pb-2">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+            <Baby className="w-8 h-8 text-white" />
+          </div>
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            {isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+          </CardTitle>
+          <p className="text-gray-500 text-sm mt-1">
+            نظام إدارة الحضانة
+          </p>
         </CardHeader>
+        
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-                {error}
-              </div>
+            {isRegister && (
+              <>
+                <div>
+                  <Label htmlFor="displayName">الاسم الكامل</Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="أدخل اسمك"
+                    required
+                    className="mt-1"
+                    data-testid="display-name-input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">رقم الهاتف (اختياري)</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+962..."
+                    className="mt-1"
+                    dir="ltr"
+                    data-testid="phone-input"
+                  />
+                </div>
+              </>
             )}
             
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
                 required
+                className="mt-1"
                 dir="ltr"
-                placeholder="admin@playzone.sa"
+                data-testid="email-input"
               />
             </div>
             
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">كلمة المرور</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
                 placeholder="••••••••"
+                required
+                className="mt-1"
+                data-testid="password-input"
               />
             </div>
             
-            <Button 
-              type="submit" 
-              className="w-full" 
+            {error && (
+              <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg">
+                {error}
+              </div>
+            )}
+            
+            <Button
+              type="submit"
               disabled={loading}
+              className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl"
+              data-testid="submit-btn"
             >
-              {loading ? 'جاري التحميل...' : 'تسجيل الدخول'}
+              {loading ? (
+                'جاري التحميل...'
+              ) : isRegister ? (
+                <>
+                  <UserPlus className="w-5 h-5 ml-2" />
+                  إنشاء حساب
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5 ml-2" />
+                  دخول
+                </>
+              )}
             </Button>
           </form>
+          
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setIsRegister(!isRegister)}
+              className="text-blue-600 hover:text-blue-700 text-sm"
+            >
+              {isRegister ? 'لديك حساب؟ سجل دخولك' : 'ليس لديك حساب؟ سجل الآن'}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
