@@ -5,6 +5,8 @@ from models.checkin import CheckInSession, CheckInCreate, CheckOutCreate, CheckI
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
 from datetime import datetime, timezone, date
+import math
+import random
 
 router = APIRouter(prefix="/checkin", tags=["Check-In"])
 
@@ -14,10 +16,70 @@ def get_db():
     return db
 
 
+def _generate_order_number() -> str:
+    date_part = datetime.now(timezone.utc).strftime("%Y%m%d")
+    random_part = str(random.randint(1000, 9999))
+    return f"ORD-{date_part}-{random_part}"
+
+
+def _calculate_overdue(minutes_used: int, included_minutes: int) -> tuple[int, float]:
+    extra_minutes = max(0, minutes_used - included_minutes)
+    if extra_minutes <= 0:
+        return 0, 0.0
+    extra_hours = math.ceil(extra_minutes / 60)
+    return extra_minutes, float(extra_hours * 3)
+
+
+async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amount: float, user: dict, session_id: str) -> str:
+    overtime_product = await db.products.find_one({"category": "OVERTIME", "is_active": True}, {"_id": 0})
+
+    if overtime_product:
+        product_id = overtime_product["product_id"]
+        product_name_ar = overtime_product.get("name_ar", "رسوم الوقت الإضافي")
+        product_name_en = overtime_product.get("name_en", "Overtime Fee")
+    else:
+        # Fallback in case products were not seeded yet
+        product_id = "OVERTIME_MANUAL"
+        product_name_ar = "رسوم الوقت الإضافي"
+        product_name_en = "Overtime Fee"
+
+    line_item = {
+        "item_id": str(random.randint(10000000, 99999999)),
+        "product_id": product_id,
+        "product_name_ar": product_name_ar,
+        "product_name_en": product_name_en,
+        "quantity": 1,
+        "unit_price": round(amount, 2),
+        "line_total": round(amount, 2),
+        "notes": f"Session overtime charge for {session_id}"
+    }
+
+    order_id = str(random.randint(10**11, 10**12 - 1))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    order_doc = {
+        "order_id": order_id,
+        "order_number": _generate_order_number(),
+        "guardian_id": None,
+        "child_id": None,
+        "items": [line_item],
+        "subtotal": round(amount, 2),
+        "tax_amount": 0.0,
+        "total_amount": round(amount, 2),
+        "status": "OPEN",
+        "payment_method": "CASH",
+        "notes": f"Auto-generated overdue order for customer {customer.get('customer_id')}",
+        "created_by": user.get("user_id"),
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    await db.orders.insert_one(order_doc)
+    return order_id
+
+
 @router.post("/scan", response_model=dict)
 async def scan_card(
     scan_data: CheckInCreate,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
@@ -107,7 +169,7 @@ async def scan_card(
 async def check_in(
     checkin_data: CheckInCreate,
     use_subscription: bool = False,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Check in a customer"""
@@ -140,6 +202,7 @@ async def check_in(
     # Determine payment type
     payment_type = "HOURLY"
     subscription_id = None
+    included_minutes = 120
     
     if use_subscription:
         # Check for active subscription
@@ -152,6 +215,7 @@ async def check_in(
         if subscription:
             payment_type = "SUBSCRIPTION"
             subscription_id = subscription["subscription_id"]
+            included_minutes = 600
         else:
             # Check for pending subscription to activate
             pending_sub = await db.subscriptions.find_one({
@@ -177,6 +241,7 @@ async def check_in(
                 
                 payment_type = "SUBSCRIPTION"
                 subscription_id = pending_sub["subscription_id"]
+                included_minutes = 600
                 
                 await log_audit(
                     db, "SUBSCRIPTION", subscription_id, "AUTO_ACTIVATED",
@@ -196,7 +261,8 @@ async def check_in(
         branch_id=checkin_data.branch_id,
         payment_type=payment_type,
         subscription_id=subscription_id,
-        created_by=user["user_id"]
+        created_by=user["user_id"],
+        included_minutes=included_minutes
     )
     
     session_dict = session.model_dump()
@@ -236,7 +302,7 @@ async def check_in(
 @router.post("/{session_id}/checkout", response_model=CheckInSessionResponse)
 async def check_out(
     session_id: str,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Check out a customer"""
@@ -261,21 +327,42 @@ async def check_out(
         check_in_time = check_in_time.replace(tzinfo=timezone.utc)
     
     duration = int((now - check_in_time).total_seconds() / 60)
-    
+    included_minutes = int(session.get("included_minutes") or (600 if session.get("payment_type") == "SUBSCRIPTION" else 120))
+    overdue_minutes, overdue_amount = _calculate_overdue(duration, included_minutes)
+
+    checkout_status = "OVERDUE" if overdue_amount > 0 else "CHECKED_OUT"
+    overtime_order_id = None
+
+    customer = await db.customers.find_one({"customer_id": session["customer_id"]}, {"_id": 0})
+
+    if overdue_amount > 0:
+        overtime_order_id = await _create_overtime_order(db, customer or {"customer_id": session["customer_id"]}, overdue_amount, user, session_id)
+
     await db.checkin_sessions.update_one(
         {"session_id": session_id},
         {"$set": {
-            "status": "CHECKED_OUT",
+            "status": checkout_status,
             "check_out_time": now.isoformat(),
             "duration_minutes": duration,
+            "included_minutes": included_minutes,
+            "overdue_minutes": overdue_minutes,
+            "overdue_amount": overdue_amount,
+            "overtime_order_id": overtime_order_id,
+            "amount_charged": overdue_amount,
             "updated_at": now.isoformat()
         }}
     )
-    
+
     await log_audit(
         db, "CHECKIN", session_id, "CHECKED_OUT",
         user["user_id"], user["role"],
-        after_state={"duration_minutes": duration},
+        after_state={
+            "duration_minutes": duration,
+            "included_minutes": included_minutes,
+            "overdue_minutes": overdue_minutes,
+            "overdue_amount": overdue_amount,
+            "overtime_order_id": overtime_order_id
+        },
         notes=f"Check-out after {duration} minutes"
     )
     
