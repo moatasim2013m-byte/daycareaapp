@@ -32,6 +32,12 @@ Onboarding students and adding parent/guardian details in illumine is designed t
    - Email address
 7. Click **Submit**.
 
+### UI cues to look for
+
+- If only **Mother Details** are present, the **Father Details** card displays a centered **"+"** icon with the label **Click To Add Father**.
+- In the student list, you can also use the inline **Add Father** / **Add Mother** links shown in the **Parents** column.
+- To open the student onboarding form from the list page, use the **Add Student** button in the top-right corner.
+
 ## What Happens Next
 
 - Parent details are saved to the system.
