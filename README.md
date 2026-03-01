@@ -90,6 +90,16 @@ Open `http://localhost:3000` and ensure the browser console logs the backend roo
 
 ---
 
+
+## Phase 4 (Reception Operations)
+
+- Checkout now applies overtime billing rules for walk-in sessions:
+  - Walk-in 1h = 7 JD
+  - Walk-in 2h = 10 JD
+  - After included time: `overdue_fee = ceil(extra_minutes/60) * 3 JD`
+- If overtime exists at checkout, an overtime order is auto-generated and linked on the check-in session via `overtime_order_id` and `overtime_order_number`.
+- Overtime orders are created in the standard `orders` collection with status `OPEN` and can be settled from normal order/payment flows.
+
 ## Build & Test Commands
 
 ### Backend

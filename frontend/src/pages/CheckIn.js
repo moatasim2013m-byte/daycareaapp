@@ -26,7 +26,8 @@ import {
   LogIn,
   LogOut,
   Crown,
-  Scan
+  Scan,
+  Receipt
 } from 'lucide-react';
 
 const CheckIn = () => {
@@ -40,6 +41,7 @@ const CheckIn = () => {
   const [showWaiver, setShowWaiver] = useState(false);
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [checkoutResult, setCheckoutResult] = useState(null);
   
   // Registration form
   const [registerForm, setRegisterForm] = useState({
@@ -154,11 +156,7 @@ const CheckIn = () => {
       const response = await api.post(`/checkin/${sessionId}/checkout`);
       const data = response.data;
 
-      if (data.overdue_amount > 0) {
-        alert(`تم تسجيل الخروج. رسوم وقت إضافي: ${data.overdue_amount} د.أ${data.overtime_order_id ? `\nرقم طلب الرسوم: ${data.overtime_order_id}` : ''}`);
-      } else {
-        alert('تم تسجيل الخروج بنجاح');
-      }
+      setCheckoutResult(data);
 
       fetchActiveSessions();
       setScanResult(null);
@@ -255,6 +253,16 @@ const CheckIn = () => {
   const getElapsedMinutes = (checkInTime) => {
     const start = new Date(checkInTime).getTime();
     return Math.max(0, Math.floor((Date.now() - start) / 60000));
+  };
+
+  const getOverdueInfo = (session) => {
+    const elapsed = getElapsedMinutes(session.check_in_time);
+    const included = session.included_minutes || 0;
+    return {
+      elapsed,
+      included,
+      overdue: Math.max(0, elapsed - included),
+    };
   };
 
   return (
@@ -483,37 +491,49 @@ const CheckIn = () => {
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {activeSessions.map((session) => (
-                      <div
-                        key={session.session_id}
-                        className="bg-gray-50 rounded-input p-3 flex items-center justify-between"
-                        data-testid={`session-${session.session_id}`}
-                      >
-                        <div>
-                          <p className="font-bold">{session.child_name}</p>
-                          <p className="text-sm text-gray-500">
-                            دخول: {formatTime(session.check_in_time)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            المدة: {getElapsedMinutes(session.check_in_time)} دقيقة
-                          </p>
-                          {session.payment_type === 'SUBSCRIPTION' && (
-                            <span className="text-xs text-primary-yellow flex items-center gap-1">
-                              <Crown className="w-3 h-3" />
-                              اشتراك
-                            </span>
-                          )}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCheckOut(session.session_id)}
-                          className="rounded-button text-playful-orange border-playful-orange hover:bg-playful-orange hover:text-white"
+                    {activeSessions.map((session) => {
+                      const overtime = getOverdueInfo(session);
+
+                      return (
+                        <div
+                          key={session.session_id}
+                          className={`rounded-input p-3 flex items-center justify-between border ${overtime.overdue > 0 ? 'bg-playful-orange/10 border-playful-orange/40' : 'bg-gray-50 border-transparent'}`}
+                          data-testid={`session-${session.session_id}`}
                         >
-                          <LogOut className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div>
+                            <p className="font-bold">{session.child_name}</p>
+                            <p className="text-sm text-gray-500">
+                              دخول: {formatTime(session.check_in_time)}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              المدة: {overtime.elapsed} دقيقة
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              الوقت المشمول: {overtime.included} دقيقة
+                            </p>
+                            {overtime.overdue > 0 && (
+                              <p className="text-xs text-playful-orange font-bold">
+                                متجاوز {overtime.overdue} دقيقة
+                              </p>
+                            )}
+                            {session.payment_type === 'SUBSCRIPTION' && (
+                              <span className="text-xs text-primary-yellow flex items-center gap-1">
+                                <Crown className="w-3 h-3" />
+                                اشتراك
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCheckOut(session.session_id)}
+                            className="rounded-button text-playful-orange border-playful-orange hover:bg-playful-orange hover:text-white"
+                          >
+                            <LogOut className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -521,6 +541,53 @@ const CheckIn = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={Boolean(checkoutResult)} onOpenChange={(open) => !open && setCheckoutResult(null)}>
+        <DialogContent className="rounded-modal max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Receipt className="w-6 h-6 text-playful-green" />
+              ملخص تسجيل الخروج
+            </DialogTitle>
+          </DialogHeader>
+
+          {checkoutResult && (
+            <div className="space-y-3 py-2">
+              <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
+                <p>الحالة: <strong>{checkoutResult.status === 'OVERDUE' ? 'متأخر' : 'تم تسجيل الخروج'}</strong></p>
+                <p>المدة: <strong>{checkoutResult.duration_minutes || 0} دقيقة</strong></p>
+                <p>الوقت المشمول: <strong>{checkoutResult.included_minutes || 0} دقيقة</strong></p>
+                <p>الوقت الإضافي: <strong>{checkoutResult.overdue_minutes || 0} دقيقة</strong></p>
+              </div>
+
+              {checkoutResult.overdue_amount > 0 ? (
+                <div className="bg-playful-orange/10 border border-playful-orange/30 rounded-input p-3 text-sm space-y-1">
+                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {checkoutResult.overdue_amount} د.أ</p>
+                  {checkoutResult.overtime_order_number && (
+                    <p>رقم الطلب: <strong>{checkoutResult.overtime_order_number}</strong></p>
+                  )}
+                  {checkoutResult.overtime_order_id && (
+                    <p className="text-xs text-gray-600">معرّف الطلب: {checkoutResult.overtime_order_id}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-playful-green/10 border border-playful-green/30 rounded-input p-3 text-sm">
+                  لا توجد رسوم إضافية.
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => setCheckoutResult(null)}
+              className="w-full rounded-button bg-playful-blue hover:bg-playful-blue/90 text-white"
+            >
+              تم
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Registration Dialog */}
       <Dialog open={showRegister} onOpenChange={setShowRegister}>

@@ -42,6 +42,7 @@ class CheckInSession(BaseModel):
     order_id: Optional[str] = None  # If paid hourly
     amount_charged: float = 0.0
     overtime_order_id: Optional[str] = None
+    overtime_order_number: Optional[str] = None
 
     status: CheckInStatus = "CHECKED_IN"
     notes: Optional[str] = None
@@ -69,6 +70,7 @@ class CheckInSessionResponse(BaseModel):
     order_id: Optional[str] = None
     amount_charged: float = 0.0
     overtime_order_id: Optional[str] = None
+    overtime_order_number: Optional[str] = None
     status: CheckInStatus
     notes: Optional[str] = None
     # Customer info (populated on response)

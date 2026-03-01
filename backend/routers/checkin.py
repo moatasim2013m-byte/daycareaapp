@@ -1,12 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Security
+from fastapi import APIRouter, HTTPException, status, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List, Optional
-from models.checkin import CheckInSession, CheckInCreate, CheckOutCreate, CheckInSessionResponse
-from middleware.auth import get_current_user, require_role
+from models.checkin import CheckInSession, CheckInCreate, CheckInSessionResponse
+from middleware.auth import require_role
 from utils.audit import log_audit
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
+from uuid import uuid4
 import math
-import random
 
 router = APIRouter(prefix="/checkin", tags=["Check-In"])
 
@@ -18,8 +18,38 @@ def get_db():
 
 def _generate_order_number() -> str:
     date_part = datetime.now(timezone.utc).strftime("%Y%m%d")
-    random_part = str(random.randint(1000, 9999))
-    return f"ORD-{date_part}-{random_part}"
+    unique_part = uuid4().hex[:8].upper()
+    return f"ORD-{date_part}-{unique_part}"
+
+
+PAYMENT_INCLUDED_MINUTES = {
+    "SUBSCRIPTION": 600,
+    "HOURLY": 120,
+}
+
+
+def _resolve_included_minutes(session: dict) -> int:
+    included_minutes = session.get("included_minutes")
+    if isinstance(included_minutes, int) and included_minutes > 0:
+        return included_minutes
+    return PAYMENT_INCLUDED_MINUTES.get(session.get("payment_type"), PAYMENT_INCLUDED_MINUTES["HOURLY"])
+
+
+async def _derive_guardian_id(db: AsyncIOMotorDatabase, customer: dict) -> Optional[str]:
+    guardian = customer.get("guardian") or {}
+    guardian_email = guardian.get("email")
+    if guardian_email:
+        user = await db.users.find_one({"email": guardian_email}, {"_id": 0, "user_id": 1})
+        if user:
+            return user.get("user_id")
+
+    guardian_phone = guardian.get("phone")
+    if guardian_phone:
+        user = await db.users.find_one({"phone": guardian_phone}, {"_id": 0, "user_id": 1})
+        if user:
+            return user.get("user_id")
+
+    return None
 
 
 def _calculate_overdue(minutes_used: int, included_minutes: int) -> tuple[int, float]:
@@ -30,7 +60,7 @@ def _calculate_overdue(minutes_used: int, included_minutes: int) -> tuple[int, f
     return extra_minutes, float(extra_hours * 3)
 
 
-async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amount: float, user: dict, session_id: str) -> str:
+async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amount: float, user: dict, session_id: str) -> tuple[str, str]:
     overtime_product = await db.products.find_one({"category": "OVERTIME", "is_active": True}, {"_id": 0})
 
     if overtime_product:
@@ -44,7 +74,7 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         product_name_en = "Overtime Fee"
 
     line_item = {
-        "item_id": str(random.randint(10000000, 99999999)),
+        "item_id": str(uuid4()),
         "product_id": product_id,
         "product_name_ar": product_name_ar,
         "product_name_en": product_name_en,
@@ -54,13 +84,15 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         "notes": f"Session overtime charge for {session_id}"
     }
 
-    order_id = str(random.randint(10**11, 10**12 - 1))
+    order_id = str(uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
+    guardian_id = await _derive_guardian_id(db, customer)
+
     order_doc = {
         "order_id": order_id,
         "order_number": _generate_order_number(),
-        "guardian_id": None,
-        "child_id": None,
+        "guardian_id": guardian_id,
+        "child_id": customer.get("customer_id"),
         "items": [line_item],
         "subtotal": round(amount, 2),
         "tax_amount": 0.0,
@@ -73,7 +105,7 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         "updated_at": now_iso,
     }
     await db.orders.insert_one(order_doc)
-    return order_id
+    return order_id, order_doc["order_number"]
 
 
 @router.post("/scan", response_model=dict)
@@ -202,7 +234,7 @@ async def check_in(
     # Determine payment type
     payment_type = "HOURLY"
     subscription_id = None
-    included_minutes = 120
+    included_minutes = PAYMENT_INCLUDED_MINUTES["HOURLY"]
     
     if use_subscription:
         # Check for active subscription
@@ -215,7 +247,7 @@ async def check_in(
         if subscription:
             payment_type = "SUBSCRIPTION"
             subscription_id = subscription["subscription_id"]
-            included_minutes = 600
+            included_minutes = PAYMENT_INCLUDED_MINUTES["SUBSCRIPTION"]
         else:
             # Check for pending subscription to activate
             pending_sub = await db.subscriptions.find_one({
@@ -241,7 +273,7 @@ async def check_in(
                 
                 payment_type = "SUBSCRIPTION"
                 subscription_id = pending_sub["subscription_id"]
-                included_minutes = 600
+                included_minutes = PAYMENT_INCLUDED_MINUTES["SUBSCRIPTION"]
                 
                 await log_audit(
                     db, "SUBSCRIPTION", subscription_id, "AUTO_ACTIVATED",
@@ -327,16 +359,24 @@ async def check_out(
         check_in_time = check_in_time.replace(tzinfo=timezone.utc)
     
     duration = int((now - check_in_time).total_seconds() / 60)
-    included_minutes = int(session.get("included_minutes") or (600 if session.get("payment_type") == "SUBSCRIPTION" else 120))
+    included_minutes = _resolve_included_minutes(session)
     overdue_minutes, overdue_amount = _calculate_overdue(duration, included_minutes)
 
+    # Lifecycle: CHECKED_IN -> CHECKED_OUT for normal sessions, CHECKED_IN -> OVERDUE when late fees apply.
     checkout_status = "OVERDUE" if overdue_amount > 0 else "CHECKED_OUT"
     overtime_order_id = None
+    overtime_order_number = None
 
     customer = await db.customers.find_one({"customer_id": session["customer_id"]}, {"_id": 0})
 
     if overdue_amount > 0:
-        overtime_order_id = await _create_overtime_order(db, customer or {"customer_id": session["customer_id"]}, overdue_amount, user, session_id)
+        overtime_order_id, overtime_order_number = await _create_overtime_order(
+            db,
+            customer or {"customer_id": session["customer_id"]},
+            overdue_amount,
+            user,
+            session_id,
+        )
 
     await db.checkin_sessions.update_one(
         {"session_id": session_id},
@@ -348,6 +388,7 @@ async def check_out(
             "overdue_minutes": overdue_minutes,
             "overdue_amount": overdue_amount,
             "overtime_order_id": overtime_order_id,
+            "overtime_order_number": overtime_order_number,
             "amount_charged": overdue_amount,
             "updated_at": now.isoformat()
         }}
@@ -361,7 +402,9 @@ async def check_out(
             "included_minutes": included_minutes,
             "overdue_minutes": overdue_minutes,
             "overdue_amount": overdue_amount,
-            "overtime_order_id": overtime_order_id
+            "overtime_order_id": overtime_order_id,
+            "overtime_order_number": overtime_order_number,
+            "checkout_status": checkout_status,
         },
         notes=f"Check-out after {duration} minutes"
     )
@@ -389,7 +432,7 @@ async def check_out(
 @router.get("/active", response_model=List[CheckInSessionResponse])
 async def list_active_sessions(
     branch_id: Optional[str] = None,
-    user: dict = Security(get_current_user),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """List all currently checked-in customers"""
@@ -428,7 +471,7 @@ async def list_session_history(
     customer_id: Optional[str] = None,
     date_from: Optional[str] = None,
     limit: int = 50,
-    user: dict = Security(get_current_user),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """List check-in history"""
