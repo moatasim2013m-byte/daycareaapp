@@ -63,6 +63,12 @@ async def create_indexes():
     await db.sessions.create_index("state")
     await db.sessions.create_index([("state", 1), ("checkin_at", -1)])
     await db.sessions.create_index([("child_id", 1), ("state", 1)])
+
+    # Check-in sessions (Reception Phase 4)
+    await db.checkin_sessions.create_index("session_id", unique=True)
+    await db.checkin_sessions.create_index([("status", 1), ("branch_id", 1), ("check_in_time", -1)])
+    await db.checkin_sessions.create_index([("customer_id", 1), ("status", 1)])
+    await db.checkin_sessions.create_index([("check_out_time", -1), ("status", 1)])
     
     # Check-in sessions (reception operations)
     await db.checkin_sessions.create_index("session_id", unique=True)

@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List, Optional
 from models.customer import Customer, CustomerCreate, CustomerUpdate, CustomerResponse, WaiverAcceptance, GuardianInfo
 from middleware.auth import get_current_user, require_role
+from constants.roles import FRONTDESK_ROLES
 from utils.audit import log_audit
 from datetime import datetime, timezone, date
 from dateutil.relativedelta import relativedelta
@@ -97,7 +98,7 @@ async def list_customers(
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 async def register_customer(
     customer_data: CustomerCreate,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role(*FRONTDESK_ROLES)),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Register a new child with their card"""
@@ -117,7 +118,7 @@ async def register_customer(
         )
     
     # Branch access check
-    if user.get("role") in ["MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT"]:
+    if user.get("role") in FRONTDESK_ROLES and user.get("role") != "ADMIN":
         if user.get("branch_id") != customer_data.branch_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -296,7 +297,7 @@ async def update_customer(
 async def accept_waiver(
     customer_id: str,
     waiver: WaiverAcceptance,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role(*FRONTDESK_ROLES)),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Accept waiver for customer"""

@@ -119,6 +119,19 @@ yarn build
 
 ---
 
+## Phase 4 (Reception Operations)
+
+- Check-out applies overtime billing using fixed rules:
+  - Walk-in 1 hour = **7 JD**
+  - Walk-in 2 hours = **10 JD**
+  - After included time: `ceil(extra_minutes / 60) * 3 JD`
+- If a child checks out after included minutes, the backend creates an overtime order automatically in `orders` with `status=OPEN` and links it to child/guardian context when available.
+- The reception check-in screen now shows included time, elapsed time, overdue indication, and a structured checkout summary with overtime amount + overtime order number.
+
+No new environment variables are required for this phase.
+
+---
+
 ## Phase-0 Documentation
 
 - `PRODUCT_SPEC.md`

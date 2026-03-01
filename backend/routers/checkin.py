@@ -7,6 +7,9 @@ from utils.audit import log_audit
 from datetime import datetime, timezone
 from uuid import uuid4
 import math
+import random
+import uuid
+from constants.roles import FRONTDESK_ROLES
 
 router = APIRouter(prefix="/checkin", tags=["Check-In"])
 
@@ -74,7 +77,7 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         product_name_en = "Overtime Fee"
 
     line_item = {
-        "item_id": str(uuid4()),
+        "item_id": str(uuid.uuid4()),
         "product_id": product_id,
         "product_name_ar": product_name_ar,
         "product_name_en": product_name_en,
@@ -84,15 +87,16 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         "notes": f"Session overtime charge for {session_id}"
     }
 
-    order_id = str(uuid4())
+    order_id = str(uuid.uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
-    guardian_id = await _derive_guardian_id(db, customer)
-
+    guardian_info = customer.get("guardian") or {}
+    guardian_id = customer.get("guardian_id") or guardian_info.get("national_id")
+    child_id = customer.get("child_id") or customer.get("customer_id")
     order_doc = {
         "order_id": order_id,
         "order_number": _generate_order_number(),
         "guardian_id": guardian_id,
-        "child_id": customer.get("customer_id"),
+        "child_id": child_id,
         "items": [line_item],
         "subtotal": round(amount, 2),
         "tax_amount": 0.0,
@@ -105,13 +109,56 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
         "updated_at": now_iso,
     }
     await db.orders.insert_one(order_doc)
-    return order_id, order_doc["order_number"]
+    return order_doc["order_id"], order_doc["order_number"]
+
+
+def _resolve_included_minutes(session: dict) -> int:
+    """Use persisted included_minutes first, then safe business defaults."""
+    if session.get("included_minutes"):
+        return int(session["included_minutes"])
+    if session.get("payment_type") == "SUBSCRIPTION":
+        return 600
+    return 120
+
+
+def _build_overdue_meta(duration: int, included_minutes: int) -> dict:
+    overdue_minutes, overdue_amount = _calculate_overdue(duration, included_minutes)
+    return {
+        "duration_minutes": duration,
+        "included_minutes": included_minutes,
+        "overdue_minutes": overdue_minutes,
+        "overdue_amount": overdue_amount,
+        "overdue_hours_charged": math.ceil(overdue_minutes / 60) if overdue_minutes > 0 else 0,
+        "is_overdue": overdue_amount > 0,
+    }
+
+
+def _enrich_session_for_ui(session: dict) -> dict:
+    """Populate computed fields needed by reception UI for active sessions/checkouts."""
+    check_in_time = session.get("check_in_time")
+    if isinstance(check_in_time, str):
+        check_in_time = datetime.fromisoformat(check_in_time)
+
+    if isinstance(check_in_time, datetime):
+        if check_in_time.tzinfo is None:
+            check_in_time = check_in_time.replace(tzinfo=timezone.utc)
+        elapsed_minutes = max(0, int((datetime.now(timezone.utc) - check_in_time).total_seconds() / 60))
+        included_minutes = _resolve_included_minutes(session)
+        session["elapsed_minutes"] = elapsed_minutes
+        session["included_minutes"] = included_minutes
+        session["is_overdue"] = elapsed_minutes > included_minutes
+    else:
+        session.setdefault("elapsed_minutes", 0)
+        session.setdefault("is_overdue", False)
+
+    session.setdefault("overdue_hours_charged", math.ceil(session.get("overdue_minutes", 0) / 60) if session.get("overdue_minutes", 0) > 0 else 0)
+    return session
 
 
 @router.post("/scan", response_model=dict)
 async def scan_card(
     scan_data: CheckInCreate,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role(*FRONTDESK_ROLES)),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
@@ -145,6 +192,7 @@ async def scan_card(
     if active_session:
         if isinstance(active_session.get("check_in_time"), str):
             active_session["check_in_time"] = datetime.fromisoformat(active_session["check_in_time"])
+        active_session = _enrich_session_for_ui(active_session)
         
         return {
             "status": "ALREADY_CHECKED_IN",
@@ -201,7 +249,7 @@ async def scan_card(
 async def check_in(
     checkin_data: CheckInCreate,
     use_subscription: bool = False,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role(*FRONTDESK_ROLES)),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Check in a customer"""
@@ -334,7 +382,7 @@ async def check_in(
 @router.post("/{session_id}/checkout", response_model=CheckInSessionResponse)
 async def check_out(
     session_id: str,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
+    user: dict = Depends(require_role(*FRONTDESK_ROLES)),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Check out a customer"""
@@ -360,20 +408,22 @@ async def check_out(
     
     duration = int((now - check_in_time).total_seconds() / 60)
     included_minutes = _resolve_included_minutes(session)
-    overdue_minutes, overdue_amount = _calculate_overdue(duration, included_minutes)
+    overdue_meta = _build_overdue_meta(duration, included_minutes)
 
-    # Lifecycle: CHECKED_IN -> CHECKED_OUT for normal sessions, CHECKED_IN -> OVERDUE when late fees apply.
-    checkout_status = "OVERDUE" if overdue_amount > 0 else "CHECKED_OUT"
+    # Checkout lifecycle:
+    # - CHECKED_OUT: session fully closed with no overtime charge
+    # - OVERDUE: session closed and overtime order generated for settlement
+    checkout_status = "OVERDUE" if overdue_meta["is_overdue"] else "CHECKED_OUT"
     overtime_order_id = None
     overtime_order_number = None
 
     customer = await db.customers.find_one({"customer_id": session["customer_id"]}, {"_id": 0})
 
-    if overdue_amount > 0:
+    if overdue_meta["is_overdue"]:
         overtime_order_id, overtime_order_number = await _create_overtime_order(
             db,
             customer or {"customer_id": session["customer_id"]},
-            overdue_amount,
+            overdue_meta["overdue_amount"],
             user,
             session_id,
         )
@@ -383,13 +433,10 @@ async def check_out(
         {"$set": {
             "status": checkout_status,
             "check_out_time": now.isoformat(),
-            "duration_minutes": duration,
-            "included_minutes": included_minutes,
-            "overdue_minutes": overdue_minutes,
-            "overdue_amount": overdue_amount,
+            **overdue_meta,
             "overtime_order_id": overtime_order_id,
             "overtime_order_number": overtime_order_number,
-            "amount_charged": overdue_amount,
+            "amount_charged": overdue_meta["overdue_amount"],
             "updated_at": now.isoformat()
         }}
     )
@@ -398,13 +445,8 @@ async def check_out(
         db, "CHECKIN", session_id, "CHECKED_OUT",
         user["user_id"], user["role"],
         after_state={
-            "duration_minutes": duration,
-            "included_minutes": included_minutes,
-            "overdue_minutes": overdue_minutes,
-            "overdue_amount": overdue_amount,
-            "overtime_order_id": overtime_order_id,
-            "overtime_order_number": overtime_order_number,
-            "checkout_status": checkout_status,
+            **overdue_meta,
+            "overtime_order_id": overtime_order_id
         },
         notes=f"Check-out after {duration} minutes"
     )
@@ -420,6 +462,7 @@ async def check_out(
     # Get customer info
     customer = await db.customers.find_one({"customer_id": updated["customer_id"]}, {"_id": 0})
     
+    updated = _enrich_session_for_ui(updated)
     response = CheckInSessionResponse(**updated)
     if customer:
         response.child_name = customer.get("child_name")
@@ -450,6 +493,7 @@ async def list_active_sessions(
     for sess in sessions:
         if isinstance(sess.get("check_in_time"), str):
             sess["check_in_time"] = datetime.fromisoformat(sess["check_in_time"])
+        sess = _enrich_session_for_ui(sess)
         
         # Get customer info
         customer = await db.customers.find_one({"customer_id": sess["customer_id"]}, {"_id": 0})
