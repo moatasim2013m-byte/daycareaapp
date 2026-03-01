@@ -135,6 +135,7 @@ No new environment variables are required for this phase.
 ## Phase-0 Documentation
 
 - `PRODUCT_SPEC.md`
+- `docs/student-attendance-guide.md`
 - `DATA_MODEL.md`
 - `API_CONTRACT.md`
 - `ACCEPTANCE_TESTS.md`
