@@ -122,7 +122,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers
 
 
 # Create API router with /api prefix
@@ -132,12 +132,17 @@ api_router = APIRouter(prefix="/api")
 # Include all routers
 api_router.include_router(auth.router)
 api_router.include_router(children.router)
+api_router.include_router(customers.router)
 api_router.include_router(products.router)
 api_router.include_router(orders.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(sessions.router)
+api_router.include_router(checkin.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
+api_router.include_router(users.router)
+api_router.include_router(branches.router)
+api_router.include_router(zones.router)
 
 # Mount API router
 app.include_router(api_router)
