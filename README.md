@@ -135,8 +135,14 @@ No new environment variables are required for this phase.
 ## Phase-0 Documentation
 
 - `PRODUCT_SPEC.md`
+- `docs/student-attendance-guide.md`
 - `DATA_MODEL.md`
 - `API_CONTRACT.md`
 - `ACCEPTANCE_TESTS.md`
 
 These documents capture the current baseline plus the target expansion model requested for upcoming phases.
+
+## Operations Playbooks
+
+- `memory/student_attendance_guide.md`
+
