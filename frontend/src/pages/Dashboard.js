@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -69,9 +70,14 @@ const Dashboard = () => {
   if (['ADMIN', 'RECEPTION', 'STAFF'].includes(user?.role)) {
     return (
       <div className="space-y-6" dir="rtl">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">لوحة التحكم</h1>
-          <p className="text-gray-500">مرحباً {user?.display_name}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">لوحة التحكم</h1>
+            <p className="text-gray-500">مرحباً {user?.display_name}</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/guides/parent-communication-step-4">دليل التواصل مع أولياء الأمور</Link>
+          </Button>
         </div>
 
         {/* Stats Grid */}
