@@ -9,7 +9,7 @@ import POS from './pages/POS';
 import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
-import ParentCommunicationGuide from './pages/ParentCommunicationGuide';
+import AttendanceForecastGuide from './pages/AttendanceForecastGuide';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -85,10 +85,10 @@ function App() {
           />
 
           <Route
-            path="/guides/parent-communication-step-4"
+            path="/attendance-forecast-guide"
             element={(
               <ProtectedRoute>
-                <ParentCommunicationGuide />
+                <AttendanceForecastGuide />
               </ProtectedRoute>
             )}
           />
