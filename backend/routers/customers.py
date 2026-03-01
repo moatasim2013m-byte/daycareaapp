@@ -97,7 +97,7 @@ async def list_customers(
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 async def register_customer(
     customer_data: CustomerCreate,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "CASHIER")),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Register a new child with their card"""
@@ -117,7 +117,7 @@ async def register_customer(
         )
     
     # Branch access check
-    if user.get("role") in ["MANAGER", "CASHIER"]:
+    if user.get("role") in ["MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT"]:
         if user.get("branch_id") != customer_data.branch_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -296,7 +296,7 @@ async def update_customer(
 async def accept_waiver(
     customer_id: str,
     waiver: WaiverAcceptance,
-    user: dict = Depends(require_role("ADMIN", "MANAGER", "CASHIER")),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Accept waiver for customer"""
