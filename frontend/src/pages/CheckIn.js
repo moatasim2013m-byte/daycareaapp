@@ -40,6 +40,8 @@ const CheckIn = () => {
   const [showWaiver, setShowWaiver] = useState(false);
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [checkoutResult, setCheckoutResult] = useState(null);
+  const [, setClockTick] = useState(0);
   
   // Registration form
   const [registerForm, setRegisterForm] = useState({
@@ -85,6 +87,13 @@ const CheckIn = () => {
       console.error('Error fetching active sessions:', error);
     }
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setClockTick((prev) => prev + 1);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Auto-focus on card input
   useEffect(() => {
@@ -154,11 +163,7 @@ const CheckIn = () => {
       const response = await api.post(`/checkin/${sessionId}/checkout`);
       const data = response.data;
 
-      if (data.overdue_amount > 0) {
-        alert(`تم تسجيل الخروج. رسوم وقت إضافي: ${data.overdue_amount} د.أ${data.overtime_order_id ? `\nرقم طلب الرسوم: ${data.overtime_order_id}` : ''}`);
-      } else {
-        alert('تم تسجيل الخروج بنجاح');
-      }
+      setCheckoutResult(data);
 
       fetchActiveSessions();
       setScanResult(null);
@@ -255,6 +260,13 @@ const CheckIn = () => {
   const getElapsedMinutes = (checkInTime) => {
     const start = new Date(checkInTime).getTime();
     return Math.max(0, Math.floor((Date.now() - start) / 60000));
+  };
+
+  const getOverdueMeta = (session) => {
+    const elapsed = session.elapsed_minutes ?? getElapsedMinutes(session.check_in_time);
+    const included = session.included_minutes || 120;
+    const overdue = Math.max(0, elapsed - included);
+    return { elapsed, included, overdue, isOverdue: overdue > 0 };
   };
 
   return (
@@ -483,10 +495,12 @@ const CheckIn = () => {
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {activeSessions.map((session) => (
+                    {activeSessions.map((session) => {
+                      const { elapsed, included, overdue, isOverdue } = getOverdueMeta(session);
+                      return (
                       <div
                         key={session.session_id}
-                        className="bg-gray-50 rounded-input p-3 flex items-center justify-between"
+                        className={`rounded-input p-3 flex items-center justify-between ${isOverdue ? 'bg-playful-orange/10 border border-playful-orange/40' : 'bg-gray-50'}`}
                         data-testid={`session-${session.session_id}`}
                       >
                         <div>
@@ -495,8 +509,16 @@ const CheckIn = () => {
                             دخول: {formatTime(session.check_in_time)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            المدة: {getElapsedMinutes(session.check_in_time)} دقيقة
+                            المدة: {elapsed} دقيقة
                           </p>
+                          <p className="text-xs text-gray-500">
+                            الوقت المشمول: {included} دقيقة
+                          </p>
+                          {isOverdue && (
+                            <p className="text-xs text-playful-orange font-semibold">
+                              متأخر {overdue} دقيقة
+                            </p>
+                          )}
                           {session.payment_type === 'SUBSCRIPTION' && (
                             <span className="text-xs text-primary-yellow flex items-center gap-1">
                               <Crown className="w-3 h-3" />
@@ -513,7 +535,7 @@ const CheckIn = () => {
                           <LogOut className="w-4 h-4" />
                         </Button>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </CardContent>
@@ -653,6 +675,44 @@ const CheckIn = () => {
               data-testid="accept-waiver-btn"
             >
               {loading ? 'جاري الحفظ...' : 'أوافق على الشروط'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(checkoutResult)} onOpenChange={(open) => !open && setCheckoutResult(null)}>
+        <DialogContent className="rounded-modal max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <LogOut className="w-6 h-6 text-playful-green" />
+              ملخص تسجيل الخروج
+            </DialogTitle>
+          </DialogHeader>
+
+          {checkoutResult && (
+            <div className="space-y-3 py-2">
+              <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
+                <p><strong>مدة الجلسة:</strong> {checkoutResult.duration_minutes || 0} دقيقة</p>
+                <p><strong>الوقت المشمول:</strong> {checkoutResult.included_minutes || 0} دقيقة</p>
+                {checkoutResult.overdue_minutes > 0 && (
+                  <p className="text-playful-orange font-semibold"><strong>وقت إضافي:</strong> {checkoutResult.overdue_minutes} دقيقة</p>
+                )}
+                <p className={checkoutResult.overdue_amount > 0 ? 'text-playful-orange font-bold' : 'text-playful-green font-bold'}>
+                  {checkoutResult.overdue_amount > 0 ? `رسوم الوقت الإضافي: ${checkoutResult.overdue_amount} د.أ` : 'لا توجد رسوم وقت إضافي'}
+                </p>
+                {checkoutResult.overtime_order_number && (
+                  <p><strong>رقم الطلب:</strong> {checkoutResult.overtime_order_number}</p>
+                )}
+                {checkoutResult.overtime_order_id && (
+                  <p className="text-xs text-gray-500"><strong>معرّف الطلب:</strong> {checkoutResult.overtime_order_id}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setCheckoutResult(null)} className="w-full rounded-button bg-playful-green hover:bg-playful-green/90 text-white">
+              تم
             </Button>
           </DialogFooter>
         </DialogContent>

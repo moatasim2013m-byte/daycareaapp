@@ -64,11 +64,15 @@ class CheckInSessionResponse(BaseModel):
     included_minutes: int = 120
     overdue_minutes: int = 0
     overdue_amount: float = 0.0
+    overdue_hours_charged: int = 0
+    is_overdue: bool = False
+    elapsed_minutes: Optional[int] = None
     payment_type: str
     subscription_id: Optional[str] = None
     order_id: Optional[str] = None
     amount_charged: float = 0.0
     overtime_order_id: Optional[str] = None
+    overtime_order_number: Optional[str] = None
     status: CheckInStatus
     notes: Optional[str] = None
     # Customer info (populated on response)
