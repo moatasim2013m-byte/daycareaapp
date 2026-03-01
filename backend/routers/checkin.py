@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Security
+from fastapi import APIRouter, HTTPException, status, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List, Optional
-from models.checkin import CheckInSession, CheckInCreate, CheckOutCreate, CheckInSessionResponse
-from middleware.auth import get_current_user, require_role
+from models.checkin import CheckInSession, CheckInCreate, CheckInSessionResponse
+from middleware.auth import require_role
 from utils.audit import log_audit
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
+from uuid import uuid4
 import math
 import random
 import uuid
@@ -20,8 +21,38 @@ def get_db():
 
 def _generate_order_number() -> str:
     date_part = datetime.now(timezone.utc).strftime("%Y%m%d")
-    random_part = str(random.randint(1000, 9999))
-    return f"ORD-{date_part}-{random_part}"
+    unique_part = uuid4().hex[:8].upper()
+    return f"ORD-{date_part}-{unique_part}"
+
+
+PAYMENT_INCLUDED_MINUTES = {
+    "SUBSCRIPTION": 600,
+    "HOURLY": 120,
+}
+
+
+def _resolve_included_minutes(session: dict) -> int:
+    included_minutes = session.get("included_minutes")
+    if isinstance(included_minutes, int) and included_minutes > 0:
+        return included_minutes
+    return PAYMENT_INCLUDED_MINUTES.get(session.get("payment_type"), PAYMENT_INCLUDED_MINUTES["HOURLY"])
+
+
+async def _derive_guardian_id(db: AsyncIOMotorDatabase, customer: dict) -> Optional[str]:
+    guardian = customer.get("guardian") or {}
+    guardian_email = guardian.get("email")
+    if guardian_email:
+        user = await db.users.find_one({"email": guardian_email}, {"_id": 0, "user_id": 1})
+        if user:
+            return user.get("user_id")
+
+    guardian_phone = guardian.get("phone")
+    if guardian_phone:
+        user = await db.users.find_one({"phone": guardian_phone}, {"_id": 0, "user_id": 1})
+        if user:
+            return user.get("user_id")
+
+    return None
 
 
 def _calculate_overdue(minutes_used: int, included_minutes: int) -> tuple[int, float]:
@@ -32,7 +63,7 @@ def _calculate_overdue(minutes_used: int, included_minutes: int) -> tuple[int, f
     return extra_minutes, float(extra_hours * 3)
 
 
-async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amount: float, user: dict, session_id: str) -> str:
+async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amount: float, user: dict, session_id: str) -> tuple[str, str]:
     overtime_product = await db.products.find_one({"category": "OVERTIME", "is_active": True}, {"_id": 0})
 
     if overtime_product:
@@ -251,7 +282,7 @@ async def check_in(
     # Determine payment type
     payment_type = "HOURLY"
     subscription_id = None
-    included_minutes = 120
+    included_minutes = PAYMENT_INCLUDED_MINUTES["HOURLY"]
     
     if use_subscription:
         # Check for active subscription
@@ -264,7 +295,7 @@ async def check_in(
         if subscription:
             payment_type = "SUBSCRIPTION"
             subscription_id = subscription["subscription_id"]
-            included_minutes = 600
+            included_minutes = PAYMENT_INCLUDED_MINUTES["SUBSCRIPTION"]
         else:
             # Check for pending subscription to activate
             pending_sub = await db.subscriptions.find_one({
@@ -290,7 +321,7 @@ async def check_in(
                 
                 payment_type = "SUBSCRIPTION"
                 subscription_id = pending_sub["subscription_id"]
-                included_minutes = 600
+                included_minutes = PAYMENT_INCLUDED_MINUTES["SUBSCRIPTION"]
                 
                 await log_audit(
                     db, "SUBSCRIPTION", subscription_id, "AUTO_ACTIVATED",
@@ -444,7 +475,7 @@ async def check_out(
 @router.get("/active", response_model=List[CheckInSessionResponse])
 async def list_active_sessions(
     branch_id: Optional[str] = None,
-    user: dict = Security(get_current_user),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """List all currently checked-in customers"""
@@ -484,7 +515,7 @@ async def list_session_history(
     customer_id: Optional[str] = None,
     date_from: Optional[str] = None,
     limit: int = 50,
-    user: dict = Security(get_current_user),
+    user: dict = Depends(require_role("ADMIN", "MANAGER", "RECEPTION", "STAFF", "CASHIER", "ATTENDANT")),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """List check-in history"""

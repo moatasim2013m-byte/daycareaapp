@@ -26,7 +26,8 @@ import {
   LogIn,
   LogOut,
   Crown,
-  Scan
+  Scan,
+  Receipt
 } from 'lucide-react';
 
 const CheckIn = () => {
@@ -543,6 +544,53 @@ const CheckIn = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={Boolean(checkoutResult)} onOpenChange={(open) => !open && setCheckoutResult(null)}>
+        <DialogContent className="rounded-modal max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Receipt className="w-6 h-6 text-playful-green" />
+              ملخص تسجيل الخروج
+            </DialogTitle>
+          </DialogHeader>
+
+          {checkoutResult && (
+            <div className="space-y-3 py-2">
+              <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
+                <p>الحالة: <strong>{checkoutResult.status === 'OVERDUE' ? 'متأخر' : 'تم تسجيل الخروج'}</strong></p>
+                <p>المدة: <strong>{checkoutResult.duration_minutes || 0} دقيقة</strong></p>
+                <p>الوقت المشمول: <strong>{checkoutResult.included_minutes || 0} دقيقة</strong></p>
+                <p>الوقت الإضافي: <strong>{checkoutResult.overdue_minutes || 0} دقيقة</strong></p>
+              </div>
+
+              {checkoutResult.overdue_amount > 0 ? (
+                <div className="bg-playful-orange/10 border border-playful-orange/30 rounded-input p-3 text-sm space-y-1">
+                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {checkoutResult.overdue_amount} د.أ</p>
+                  {checkoutResult.overtime_order_number && (
+                    <p>رقم الطلب: <strong>{checkoutResult.overtime_order_number}</strong></p>
+                  )}
+                  {checkoutResult.overtime_order_id && (
+                    <p className="text-xs text-gray-600">معرّف الطلب: {checkoutResult.overtime_order_id}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-playful-green/10 border border-playful-green/30 rounded-input p-3 text-sm">
+                  لا توجد رسوم إضافية.
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => setCheckoutResult(null)}
+              className="w-full rounded-button bg-playful-blue hover:bg-playful-blue/90 text-white"
+            >
+              تم
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Registration Dialog */}
       <Dialog open={showRegister} onOpenChange={setShowRegister}>
