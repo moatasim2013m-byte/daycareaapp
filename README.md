@@ -33,12 +33,15 @@ pip install -r requirements.txt
 
 ### 2) Configure environment
 
-Create `backend/.env`:
+Create `backend/.env` (you can copy from `backend/.env.example`):
 
 ```env
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=daycareaapp
 CORS_ORIGINS=http://localhost:3000
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_ALGORITHM=HS256
+JWT_EXPIRY_HOURS=24
 ```
 
 ### 3) Start FastAPI server
@@ -51,7 +54,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 ### 4) Verify backend
 
 - Health/root endpoint: `GET http://localhost:8000/api/`
-- Status endpoint: `GET http://localhost:8000/api/status`
+- Health endpoint: `GET http://localhost:8000/api/health`
 
 ---
 
@@ -68,7 +71,7 @@ yarn install
 
 ### 2) Configure environment
 
-Create `frontend/.env`:
+Create `frontend/.env` (you can copy from `frontend/.env.example`):
 
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8000
