@@ -151,8 +151,19 @@ const CheckIn = () => {
   const handleCheckOut = async (sessionId) => {
     setLoading(true);
     try {
-      await api.post(`/checkin/${sessionId}/checkout`);
+      const response = await api.post(`/checkin/${sessionId}/checkout`);
+      const data = response.data;
+
+      if (data.overdue_amount > 0) {
+        alert(`تم تسجيل الخروج. رسوم وقت إضافي: ${data.overdue_amount} د.أ${data.overtime_order_id ? `\nرقم طلب الرسوم: ${data.overtime_order_id}` : ''}`);
+      } else {
+        alert('تم تسجيل الخروج بنجاح');
+      }
+
       fetchActiveSessions();
+      setScanResult(null);
+      setCardNumber('');
+      cardInputRef.current?.focus();
     } catch (error) {
       alert(error.response?.data?.detail || 'حدث خطأ أثناء تسجيل الخروج');
     } finally {
@@ -239,6 +250,11 @@ const CheckIn = () => {
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getElapsedMinutes = (checkInTime) => {
+    const start = new Date(checkInTime).getTime();
+    return Math.max(0, Math.floor((Date.now() - start) / 60000));
   };
 
   return (
@@ -477,6 +493,9 @@ const CheckIn = () => {
                           <p className="font-bold">{session.child_name}</p>
                           <p className="text-sm text-gray-500">
                             دخول: {formatTime(session.check_in_time)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            المدة: {getElapsedMinutes(session.check_in_time)} دقيقة
                           </p>
                           {session.payment_type === 'SUBSCRIPTION' && (
                             <span className="text-xs text-primary-yellow flex items-center gap-1">
