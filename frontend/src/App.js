@@ -9,6 +9,7 @@ import POS from './pages/POS';
 import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
+import SetupCenterDetailsRoles from './pages/SetupCenterDetailsRoles';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -81,6 +82,10 @@ function App() {
                 <Zones />
               </ProtectedRoute>
             )}
+          />
+          <Route
+            path="/getting-started/step-1"
+            element={<SetupCenterDetailsRoles />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
