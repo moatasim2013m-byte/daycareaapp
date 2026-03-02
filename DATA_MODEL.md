@@ -289,3 +289,88 @@ Indexes:
 Indexes:
 - `{ branch_id: 1, created_at: -1 }`
 - `{ entity_type: 1, entity_id: 1, created_at: -1 }`
+
+### 21) `enquiry_forms`
+- `_id`
+- `form_id`
+- `branch_id`
+- `name`
+- `description`
+- `status` (`draft|live|disabled`)
+- `theme` (json for style customization)
+- `fields` (array of configured form fields)
+- `share_link`
+- `qr_code_url`
+- `created_by`, `created_at`, `updated_at`
+
+Indexes:
+- `{ branch_id: 1, status: 1, updated_at: -1 }`
+- `{ form_id: 1 }` unique
+
+### 22) `enquiry_leads`
+- `_id`
+- `lead_id`
+- `branch_id`
+- `source` (`form|manual|website|event|social|import`)
+- `form_id` (nullable)
+- `parent_name`, `parent_phone`, `parent_email`
+- `child_name`, `child_age_months`
+- `interest_area`
+- `status` (`new|contacted|interested|toured|applied|converted|lost|archived`)
+- `assigned_to` (user_id nullable)
+- `last_follow_up_at`, `next_follow_up_at`
+- `converted_guardian_id`, `converted_child_id` (nullable)
+- `created_by`, `created_at`, `updated_at`
+
+Indexes:
+- `{ branch_id: 1, status: 1, created_at: -1 }`
+- `{ branch_id: 1, assigned_to: 1, next_follow_up_at: 1 }`
+- `{ branch_id: 1, parent_phone: 1 }`
+
+### 23) `enquiry_activities`
+- `_id`
+- `activity_id`
+- `branch_id`
+- `lead_id`
+- `activity_type` (`call|meeting|email|note|document|status_update`)
+- `title`
+- `content`
+- `metadata` (json: meeting date, email subject, file info, etc.)
+- `created_by`
+- `created_at`
+
+Indexes:
+- `{ lead_id: 1, created_at: -1 }`
+- `{ branch_id: 1, activity_type: 1, created_at: -1 }`
+
+### 24) `enquiry_tasks`
+- `_id`
+- `task_id`
+- `branch_id`
+- `lead_id`
+- `title`
+- `description`
+- `assignee_user_id`
+- `due_at`
+- `status` (`pending|done`)
+- `completed_at`
+- `created_by`, `created_at`, `updated_at`
+
+Indexes:
+- `{ branch_id: 1, assignee_user_id: 1, status: 1, due_at: 1 }`
+- `{ lead_id: 1, status: 1, due_at: 1 }`
+
+### 25) `enquiry_email_templates`
+- `_id`
+- `template_id`
+- `branch_id`
+- `name`
+- `subject`
+- `body_text`
+- `label`
+- `is_active`
+- `created_by`, `updated_by`, `created_at`, `updated_at`
+
+Indexes:
+- `{ branch_id: 1, is_active: 1, updated_at: -1 }`
+- `{ branch_id: 1, name: 1 }`

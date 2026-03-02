@@ -36,6 +36,11 @@ A multi-branch daycare operations platform that unifies:
 - **PartyPackage/PartyBooking**: Structured event sales + logistics.
 - **InventoryItem/InventoryMovement**: Stock tracking.
 - **AuditLog**: Immutable sensitive action log.
+- **EnquiryForm**: Public or private lead-capture form for admissions.
+- **EnquiryLead**: Parent/child admission enquiry record with lifecycle status.
+- **EnquiryActivity**: Time-stamped call/meeting/email/note/document entries under a lead.
+- **FollowUpTask**: Assigned follow-up task with due date and completion state.
+- **EnquiryEmailTemplate**: Reusable plain-text templates for admissions communication.
 
 ## 3) Roles and Permissions (Target)
 
@@ -89,6 +94,25 @@ Reversal path:
 Optional invalidation:
 `SIGNED -> REVOKED`
 
+### Enquiry Lead State Machine
+`NEW -> CONTACTED -> INTERESTED -> TOURED -> APPLIED -> CONVERTED`
+With loss/parking branches:
+`NEW|CONTACTED|INTERESTED|TOURED|APPLIED -> LOST|ARCHIVED`
+
+Rules:
+- Leads are created either from public enquiry forms or manual entry by staff.
+- Every change in lead state writes a time-stamped enquiry activity entry.
+- Converted leads can be linked to guardian/child records for downstream admissions.
+
+### Follow-Up Task State Machine
+`PENDING -> DONE`
+Optional re-open path:
+`DONE -> PENDING`
+
+Rules:
+- Tasks are scoped to lead + assignee with due date and priority.
+- Task updates are visible in both lead profile timeline and consolidated task board.
+
 ## 5) Multi-Branch and Data Isolation
 - Every operational entity carries `branch_id` except globally shared catalogs by explicit design.
 - Queries default to branch-scoped filters.
@@ -99,3 +123,4 @@ Optional invalidation:
 - English source code and comments.
 - Sensitive actions must write audit logs (refunds, voids, membership changes, check-in/out).
 - Performance indexes for branch scoping, time queries, wristband lookup, and booking slots.
+- Enquiry timeline events must remain immutable and fully time-stamped for traceability.

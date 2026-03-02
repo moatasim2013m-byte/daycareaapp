@@ -88,6 +88,12 @@ function App() {
             element={(
               <ProtectedRoute>
                 <BillingAccountingDemo />
+
+          <Route
+            path="/attendance-forecast-guide"
+            element={(
+              <ProtectedRoute>
+                <AttendanceForecastGuide />
               </ProtectedRoute>
             )}
           />

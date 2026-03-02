@@ -32,9 +32,10 @@ PAYMENT_INCLUDED_MINUTES = {
 
 
 def _resolve_included_minutes(session: dict) -> int:
+    """Use persisted included minutes first, then safe business defaults."""
     included_minutes = session.get("included_minutes")
-    if isinstance(included_minutes, int) and included_minutes > 0:
-        return included_minutes
+    if isinstance(included_minutes, (int, float)) and included_minutes > 0:
+        return int(included_minutes)
     return PAYMENT_INCLUDED_MINUTES.get(session.get("payment_type"), PAYMENT_INCLUDED_MINUTES["HOURLY"])
 
 
@@ -110,15 +111,6 @@ async def _create_overtime_order(db: AsyncIOMotorDatabase, customer: dict, amoun
     }
     await db.orders.insert_one(order_doc)
     return order_doc["order_id"], order_doc["order_number"]
-
-
-def _resolve_included_minutes(session: dict) -> int:
-    """Use persisted included_minutes first, then safe business defaults."""
-    if session.get("included_minutes"):
-        return int(session["included_minutes"])
-    if session.get("payment_type") == "SUBSCRIPTION":
-        return 600
-    return 120
 
 
 def _build_overdue_meta(duration: int, included_minutes: int) -> dict:
