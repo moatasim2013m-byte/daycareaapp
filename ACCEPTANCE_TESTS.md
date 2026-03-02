@@ -73,3 +73,27 @@ End-to-end scenarios that validate the target operating flow.
 ### Expected Results
 - Totals reconcile within branch/day filters.
 - Sales by category and overdue fees match source ledgers.
+
+## Scenario 6: Admissions enquiry funnel from form to conversion
+
+### Preconditions
+- At least one enquiry form exists with status `live`.
+- Email template exists for admission follow-up.
+- Staff users exist for lead assignment.
+
+### Steps
+1. Admin creates or updates enquiry form and publishes it.
+2. Parent submits form through public link or QR scan.
+3. Lead appears in enquiries dashboard with source + initial status.
+4. Counselor opens lead profile, logs a call note, and uploads a document.
+5. Counselor creates follow-up task and assigns it to a staff member.
+6. Staff completes the task from consolidated tasks board.
+7. Counselor sends an email using saved template from lead profile.
+8. Lead status is updated through stages until conversion.
+
+### Expected Results
+- Public form submissions create lead records without duplicate task entries.
+- Activities, tasks, notes, and emails are fully time-stamped under lead timeline.
+- Task board supports pending/done filters and lead-based drill down.
+- Template-based email composition pre-fills subject/body and allows edits before send.
+- Lead conversion links downstream guardian/child profile references when created.
