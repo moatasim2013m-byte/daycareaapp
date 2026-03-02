@@ -22,13 +22,57 @@ This repository contains:
 
 Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
 
+### 0) One-time setup: create separate service accounts
+
+Use separate identities so backend and frontend can have different permissions:
+
+```bash
+PROJECT_ID=<YOUR_GCP_PROJECT_ID>
+REGION=<YOUR_REGION>
+DEPLOYER=<YOUR_USER_OR_CICD_SA_EMAIL>
+
+gcloud config set project "$PROJECT_ID"
+
+gcloud iam service-accounts create daycareaapp-backend-sa \
+  --display-name="DaycareApp Backend Cloud Run SA"
+
+gcloud iam service-accounts create daycareaapp-frontend-sa \
+  --display-name="DaycareApp Frontend Cloud Run SA"
+```
+
+Allow your deployer identity to attach those runtime service accounts during `gcloud run deploy`:
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+  --member="serviceAccount:${DEPLOYER}" \
+  --role="roles/iam.serviceAccountUser"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+  --member="serviceAccount:${DEPLOYER}" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+> If deploying from your local user account instead of CI, use:
+> `--member="user:<YOUR_GOOGLE_ACCOUNT_EMAIL>"`.
+
+If backend uses Secret Manager for `MONGO_URL`, grant only backend runtime SA access:
+
+```bash
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
 ### 1) Deploy backend service
 
 ```bash
 gcloud run deploy daycareaapp-backend \
   --source ./backend \
-  --region <REGION> \
+  --region "$REGION" \
   --allow-unauthenticated \
+  --service-account daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
 ```
 
@@ -41,8 +85,9 @@ After deploy, copy the backend HTTPS URL, for example:
 ```bash
 gcloud run deploy daycareaapp-frontend \
   --source ./frontend \
-  --region <REGION> \
+  --region "$REGION" \
   --allow-unauthenticated \
+  --service-account daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
 ```
 
