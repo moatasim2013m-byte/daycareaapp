@@ -22,19 +22,7 @@ This repository contains:
 
 Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
 
-### Option A: Deploy from source (Buildpacks / "other choice")
-
-Use this if you selected the language/buildpacks option in Cloud Run instead of Dockerfile.
-
-1. Create **two Cloud Run services** from source:
-   - Service `daycareaapp-backend` with source root `backend/`
-   - Service `daycareaapp-frontend` with source root `frontend/`
-2. Keep branch regex as needed (for example `^main$`).
-3. Set frontend **build environment variable**:
-   - `REACT_APP_BACKEND_URL=https://<your-backend-cloud-run-url>`
-4. Runtime command is already provided via `Procfile` in each folder.
-
-CLI equivalent:
+### 1) Deploy backend service
 
 ```bash
 gcloud run deploy daycareaapp-backend \
@@ -42,7 +30,15 @@ gcloud run deploy daycareaapp-backend \
   --region <REGION> \
   --allow-unauthenticated \
   --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
+```
 
+After deploy, copy the backend HTTPS URL, for example:
+
+`https://daycareaapp-backend-xxxxx-uc.a.run.app`
+
+### 2) Deploy frontend service (pointing to backend)
+
+```bash
 gcloud run deploy daycareaapp-frontend \
   --source ./frontend \
   --region <REGION> \
@@ -50,14 +46,7 @@ gcloud run deploy daycareaapp-frontend \
   --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
 ```
 
-### Option B: Deploy with Dockerfiles
-
-If you choose Dockerfile build type, point each service to its Dockerfile:
-
-- Backend Dockerfile: `backend/Dockerfile`
-- Frontend Dockerfile: `frontend/Dockerfile`
-
-### Verify Cloud Run
+### 3) Verify Cloud Run
 
 - Backend health: `GET https://<backend-url>/api/health`
 - Frontend: open `https://<frontend-url>` and confirm API calls succeed.
