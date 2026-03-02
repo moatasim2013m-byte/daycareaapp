@@ -91,6 +91,13 @@ Open `http://localhost:3000` and ensure the browser console logs the backend roo
 ---
 
 
+
+## Onboarding Guides
+
+- Step 6/7: [Set Up Forms & Generate Reports](docs/onboarding/step-6-forms-and-reports.md)
+
+---
+
 ## Phase 4 (Reception Operations)
 
 - Checkout now applies overtime billing rules for walk-in sessions:
