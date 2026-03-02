@@ -9,6 +9,7 @@ import POS from './pages/POS';
 import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
+import BillingAccountingDemo from './pages/BillingAccountingDemo';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -79,6 +80,14 @@ function App() {
             element={(
               <ProtectedRoute>
                 <Zones />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/billing"
+            element={(
+              <ProtectedRoute>
+                <BillingAccountingDemo />
               </ProtectedRoute>
             )}
           />
