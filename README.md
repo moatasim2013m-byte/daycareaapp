@@ -18,6 +18,52 @@ This repository contains:
 - Node.js 18+ and Yarn 1.x (or npm)
 - MongoDB instance (local or hosted)
 
+## Run on Google Cloud Run (recommended for hosted preview)
+
+Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
+
+### Option A: Deploy from source (Buildpacks / "other choice")
+
+Use this if you selected the language/buildpacks option in Cloud Run instead of Dockerfile.
+
+1. Create **two Cloud Run services** from source:
+   - Service `daycareaapp-backend` with source root `backend/`
+   - Service `daycareaapp-frontend` with source root `frontend/`
+2. Keep branch regex as needed (for example `^main$`).
+3. Set frontend **build environment variable**:
+   - `REACT_APP_BACKEND_URL=https://<your-backend-cloud-run-url>`
+4. Runtime command is already provided via `Procfile` in each folder.
+
+CLI equivalent:
+
+```bash
+gcloud run deploy daycareaapp-backend \
+  --source ./backend \
+  --region <REGION> \
+  --allow-unauthenticated \
+  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
+
+gcloud run deploy daycareaapp-frontend \
+  --source ./frontend \
+  --region <REGION> \
+  --allow-unauthenticated \
+  --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
+```
+
+### Option B: Deploy with Dockerfiles
+
+If you choose Dockerfile build type, point each service to its Dockerfile:
+
+- Backend Dockerfile: `backend/Dockerfile`
+- Frontend Dockerfile: `frontend/Dockerfile`
+
+### Verify Cloud Run
+
+- Backend health: `GET https://<backend-url>/api/health`
+- Frontend: open `https://<frontend-url>` and confirm API calls succeed.
+
+> Important: do **not** use `http://localhost:8000` or `http://localhost:3000` in Cloud Run settings.
+
 ## Parent Help Center Content
 
 - Consolidated parent onboarding + bus tracking article: `docs/illumine_parents_guide.md`
@@ -42,7 +88,7 @@ Create `backend/.env` (you can copy from `backend/.env.example`):
 ```env
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=daycareaapp
-CORS_ORIGINS=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000,https://<your-frontend-cloud-run-url>
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_ALGORITHM=HS256
 JWT_EXPIRY_HOURS=24
@@ -79,6 +125,9 @@ Create `frontend/.env` (you can copy from `frontend/.env.example`):
 
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8000
+
+# Cloud Run example:
+# REACT_APP_BACKEND_URL=https://<your-backend-cloud-run-url>
 ```
 
 ### 3) Start frontend dev server
@@ -91,6 +140,8 @@ yarn start
 ### 4) Verify frontend
 
 Open `http://localhost:3000` and ensure the browser console logs the backend root message from `/api/`.
+
+If you're using Cloud Run (or Codespaces), open the generated HTTPS frontend URL (not localhost) and verify requests go to your deployed backend URL.
 
 ---
 
@@ -156,4 +207,3 @@ These documents capture the current baseline plus the target expansion model req
 ## Operations Playbooks
 
 - `memory/student_attendance_guide.md`
-
