@@ -18,6 +18,10 @@ This repository contains:
 - Node.js 18+ and Yarn 1.x (or npm)
 - MongoDB instance (local or hosted)
 
+## Parent Help Center Content
+
+- Consolidated parent onboarding + bus tracking article: `docs/illumine_parents_guide.md`
+
 ---
 
 ## Backend: Local Run
