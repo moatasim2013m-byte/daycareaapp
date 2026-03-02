@@ -9,7 +9,7 @@ import POS from './pages/POS';
 import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
-import AttendanceForecastGuide from './pages/AttendanceForecastGuide';
+import BillingAccountingDemo from './pages/BillingAccountingDemo';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -83,6 +83,11 @@ function App() {
               </ProtectedRoute>
             )}
           />
+          <Route
+            path="/billing"
+            element={(
+              <ProtectedRoute>
+                <BillingAccountingDemo />
 
           <Route
             path="/attendance-forecast-guide"
