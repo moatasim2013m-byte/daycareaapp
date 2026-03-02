@@ -18,6 +18,45 @@ This repository contains:
 - Node.js 18+ and Yarn 1.x (or npm)
 - MongoDB instance (local or hosted)
 
+## Run on Google Cloud Run (recommended for hosted preview)
+
+Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
+
+### 1) Deploy backend service
+
+```bash
+gcloud run deploy daycareaapp-backend \
+  --source ./backend \
+  --region <REGION> \
+  --allow-unauthenticated \
+  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
+```
+
+After deploy, copy the backend HTTPS URL, for example:
+
+`https://daycareaapp-backend-xxxxx-uc.a.run.app`
+
+### 2) Deploy frontend service (pointing to backend)
+
+```bash
+gcloud run deploy daycareaapp-frontend \
+  --source ./frontend \
+  --region <REGION> \
+  --allow-unauthenticated \
+  --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
+```
+
+### 3) Verify Cloud Run
+
+- Backend health: `GET https://<backend-url>/api/health`
+- Frontend: open `https://<frontend-url>` and confirm API calls succeed.
+
+> Important: do **not** use `http://localhost:8000` or `http://localhost:3000` in Cloud Run settings.
+
+## Parent Help Center Content
+
+- Consolidated parent onboarding + bus tracking article: `docs/illumine_parents_guide.md`
+
 ---
 
 ## Backend: Local Run
@@ -38,7 +77,7 @@ Create `backend/.env` (you can copy from `backend/.env.example`):
 ```env
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=daycareaapp
-CORS_ORIGINS=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000,https://<your-frontend-cloud-run-url>
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_ALGORITHM=HS256
 JWT_EXPIRY_HOURS=24
@@ -75,6 +114,9 @@ Create `frontend/.env` (you can copy from `frontend/.env.example`):
 
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8000
+
+# Cloud Run example:
+# REACT_APP_BACKEND_URL=https://<your-backend-cloud-run-url>
 ```
 
 ### 3) Start frontend dev server
@@ -88,8 +130,17 @@ yarn start
 
 Open `http://localhost:3000` and ensure the browser console logs the backend root message from `/api/`.
 
+If you're using Cloud Run (or Codespaces), open the generated HTTPS frontend URL (not localhost) and verify requests go to your deployed backend URL.
+
 ---
 
+
+
+## Onboarding Guides
+
+- Step 6/7: [Set Up Forms & Generate Reports](docs/onboarding/step-6-forms-and-reports.md)
+
+---
 
 ## Phase 4 (Reception Operations)
 
@@ -135,8 +186,13 @@ No new environment variables are required for this phase.
 ## Phase-0 Documentation
 
 - `PRODUCT_SPEC.md`
+- `docs/student-attendance-guide.md`
 - `DATA_MODEL.md`
 - `API_CONTRACT.md`
 - `ACCEPTANCE_TESTS.md`
 
 These documents capture the current baseline plus the target expansion model requested for upcoming phases.
+
+## Operations Playbooks
+
+- `memory/student_attendance_guide.md`

@@ -99,6 +99,29 @@ Response 200:
 - `GET /api/loyalty/{guardian_id}`
 - `POST /api/loyalty/redeem`
 
+## Admissions Enquiries CRM
+- `GET /api/enquiries/forms`
+- `POST /api/enquiries/forms`
+- `PATCH /api/enquiries/forms/{form_id}`
+- `POST /api/enquiries/forms/{form_id}/publish`
+- `POST /api/enquiries/forms/{form_id}/disable`
+- `GET /api/enquiries/forms/{form_id}/share`
+- `POST /api/enquiries/forms/{form_id}/submit` (public endpoint)
+- `GET /api/enquiries/leads`
+- `POST /api/enquiries/leads`
+- `GET /api/enquiries/leads/{lead_id}`
+- `PATCH /api/enquiries/leads/{lead_id}`
+- `POST /api/enquiries/leads/{lead_id}/status`
+- `POST /api/enquiries/leads/{lead_id}/activities`
+- `GET /api/enquiries/leads/{lead_id}/activities`
+- `POST /api/enquiries/leads/{lead_id}/tasks`
+- `GET /api/enquiries/tasks`
+- `PATCH /api/enquiries/tasks/{task_id}`
+- `GET /api/enquiries/email-templates`
+- `POST /api/enquiries/email-templates`
+- `PATCH /api/enquiries/email-templates/{template_id}`
+- `POST /api/enquiries/leads/{lead_id}/emails`
+
 ## Parties, Inventory, Reports
 - `GET /api/party-packages`
 - `POST /api/parties`
