@@ -10,7 +10,7 @@ import uuid
 # Get BASE_URL from environment - DO NOT add default URL
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://kidzone-orders.preview.emergentagent.com"
+    BASE_URL = "https://app-wire.preview.emergentagent.com"
 
 
 class TestAuth:

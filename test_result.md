@@ -101,3 +101,52 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Fix frontend routing/wiring so the UI is usable (no redesign, no refactor, no new deps)."
+backend:
+  - task: "Backend smoke check for frontend integration"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "No backend code changes in this task; requesting smoke validation before frontend testing."
+      - working: true
+        agent: "testing"
+        comment: "Backend smoke tests PASSED - All key endpoints accessible: /api/ (200), /api/health (200, DB connected), auth endpoints responding correctly (401/422), CORS enabled, protected routes working (users/children=401), public routes working (products=200). Backend ready for frontend integration."
+
+frontend:
+  - task: "Fix frontend routing/wiring usability"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed broken route JSX in App.js and wired missing guide routes/imports so app compiles and navigation paths resolve."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 2
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Backend smoke check for frontend integration"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Implemented frontend routing/wiring fix in App.js and validated build. Please run backend smoke first per protocol."
+  - agent: "testing"
+    message: "Backend smoke tests completed successfully. All core API endpoints (/api/, /api/health, auth routes) are accessible and responding correctly. Database connected. CORS properly configured. Ready for frontend integration testing."

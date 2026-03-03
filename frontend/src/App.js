@@ -10,6 +10,9 @@ import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
 import BillingAccountingDemo from './pages/BillingAccountingDemo';
+import AttendanceForecastGuide from './pages/AttendanceForecastGuide';
+import ParentCommunicationGuide from './pages/ParentCommunicationGuide';
+import SetupCenterDetailsRoles from './pages/SetupCenterDetailsRoles';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -35,6 +38,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+
           <Route
             path="/"
             element={(
@@ -43,6 +47,7 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/checkin"
             element={(
@@ -51,6 +56,7 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/pos"
             element={(
@@ -59,6 +65,7 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/users"
             element={(
@@ -67,6 +74,7 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/branches"
             element={(
@@ -75,6 +83,7 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/zones"
             element={(
@@ -83,11 +92,15 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
           <Route
             path="/billing"
             element={(
               <ProtectedRoute>
                 <BillingAccountingDemo />
+              </ProtectedRoute>
+            )}
+          />
 
           <Route
             path="/attendance-forecast-guide"
@@ -97,6 +110,34 @@ function App() {
               </ProtectedRoute>
             )}
           />
+
+          <Route
+            path="/guides/attendance-forecast"
+            element={(
+              <ProtectedRoute>
+                <AttendanceForecastGuide />
+              </ProtectedRoute>
+            )}
+          />
+
+          <Route
+            path="/guides/parent-communication-step-4"
+            element={(
+              <ProtectedRoute>
+                <ParentCommunicationGuide />
+              </ProtectedRoute>
+            )}
+          />
+
+          <Route
+            path="/guides/setup-center-details-roles"
+            element={(
+              <ProtectedRoute>
+                <SetupCenterDetailsRoles />
+              </ProtectedRoute>
+            )}
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
