@@ -2,6 +2,7 @@ import React from 'react';
 import '@/App.css';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CheckIn from './pages/CheckIn';
@@ -10,9 +11,6 @@ import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
 import BillingAccountingDemo from './pages/BillingAccountingDemo';
-import AttendanceForecastGuide from './pages/AttendanceForecastGuide';
-import ParentCommunicationGuide from './pages/ParentCommunicationGuide';
-import SetupCenterDetailsRoles from './pages/SetupCenterDetailsRoles';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -41,101 +39,65 @@ function App() {
 
           <Route
             path="/"
-            element={(
+            element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/checkin"
-            element={(
+            element={
               <ProtectedRoute roles={['ADMIN', 'MANAGER', 'CASHIER', 'ATTENDANT', 'RECEPTION', 'STAFF']}>
                 <CheckIn />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/pos"
-            element={(
+            element={
               <ProtectedRoute roles={['ADMIN', 'MANAGER', 'CASHIER', 'RECEPTION', 'STAFF']}>
                 <POS />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/users"
-            element={(
+            element={
               <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
                 <Users />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/branches"
-            element={(
+            element={
               <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
                 <Branches />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/zones"
-            element={(
+            element={
               <ProtectedRoute>
                 <Zones />
               </ProtectedRoute>
-            )}
+            }
           />
 
           <Route
             path="/billing"
-            element={(
+            element={
               <ProtectedRoute>
                 <BillingAccountingDemo />
               </ProtectedRoute>
-            )}
-          />
-
-          <Route
-            path="/attendance-forecast-guide"
-            element={(
-              <ProtectedRoute>
-                <AttendanceForecastGuide />
-              </ProtectedRoute>
-            )}
-          />
-
-          <Route
-            path="/guides/attendance-forecast"
-            element={(
-              <ProtectedRoute>
-                <AttendanceForecastGuide />
-              </ProtectedRoute>
-            )}
-          />
-
-          <Route
-            path="/guides/parent-communication-step-4"
-            element={(
-              <ProtectedRoute>
-                <ParentCommunicationGuide />
-              </ProtectedRoute>
-            )}
-          />
-
-          <Route
-            path="/guides/setup-center-details-roles"
-            element={(
-              <ProtectedRoute>
-                <SetupCenterDetailsRoles />
-              </ProtectedRoute>
-            )}
+            }
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
