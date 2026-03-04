@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -75,6 +75,28 @@ const getEntrySummary = (entry) => {
 
 const TeacherChildLog = () => {
   const { childId } = useParams();
+  const storageKey = `teacher-child-log-${childId}-note`;
+  const [activeTab, setActiveTab] = useState('note');
+  const [noteInput, setNoteInput] = useState('');
+  const [savedNote, setSavedNote] = useState('');
+
+  useEffect(() => {
+    const storedNote = localStorage.getItem(storageKey);
+    if (storedNote) {
+      setSavedNote(storedNote);
+    }
+  }, [storageKey]);
+
+  const handleSave = () => {
+    const value = noteInput.trim();
+    if (!value) {
+      return;
+    }
+
+    setSavedNote(value);
+    localStorage.setItem(storageKey, value);
+    setNoteInput('');
+  };
 
   const [selectedDate, setSelectedDate] = useState(todayDate());
   const [activeType, setActiveType] = useState('MEAL');
