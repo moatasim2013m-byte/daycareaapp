@@ -80,6 +80,22 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {['ADMIN', 'STAFF'].includes(user?.role) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">قسم المعلمات</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/teacher/today">مهام اليوم</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/teacher/attendance">الحضور</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
@@ -268,6 +284,22 @@ const Dashboard = () => {
         <h1 className="text-2xl font-bold text-gray-900">مرحباً {user?.display_name}</h1>
         <p className="text-gray-500">لوحة تحكم ولي الأمر</p>
       </div>
+
+      {user?.role === 'PARENT' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">قسم ولي الأمر</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/parent/feed">الخلاصة اليومية</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/parent/daily-report">التقرير اليومي</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
