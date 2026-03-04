@@ -11,6 +11,7 @@ import Users from './pages/Users';
 import Branches from './pages/Branches';
 import Zones from './pages/Zones';
 import BillingAccountingDemo from './pages/BillingAccountingDemo';
+import ParentCommunicationGuide from './pages/ParentCommunicationGuide';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -87,6 +88,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Zones />
+              </ProtectedRoute>
+            }
+          />
+
+
+          <Route
+            path="/guides/parent-communication-step-4"
+            element={
+              <ProtectedRoute>
+                <ParentCommunicationGuide />
               </ProtectedRoute>
             }
           />
