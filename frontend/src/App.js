@@ -101,6 +101,16 @@ function App() {
             }
           />
 
+
+          <Route
+            path="/guides/parent-communication-step-4"
+            element={
+              <ProtectedRoute>
+                <ParentCommunicationGuide />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/billing"
             element={
