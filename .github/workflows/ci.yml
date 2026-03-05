@@ -16,6 +16,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: yarn install --frozen-lockfile
-      - run: yarn test --watchAll=false
-      - run: yarn build
+      - name: Install deps
+        run: |
+          if [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Test
+        run: |
+          if [ -f yarn.lock ]; then
+            yarn test --watchAll=false
+          else
+            npm test -- --watchAll=false
+          fi
+      - name: Build
+        run: |
+          if [ -f yarn.lock ]; then
+            yarn build
+          else
+            npm run build
+          fi
