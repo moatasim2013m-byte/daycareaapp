@@ -18,9 +18,9 @@ jobs:
           node-version: 18
       - name: Install deps
         run: |
-          corepack enable
-          corepack prepare yarn@1.22.22 --activate
-          yarn install --frozen-lockfile
+          npm install --global yarn@1.22.22
+          yarn --version
+          yarn install --frozen-lockfile --non-interactive
       - name: Test
         run: yarn test --watchAll=false
       - name: Build
