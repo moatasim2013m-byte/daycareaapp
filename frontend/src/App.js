@@ -17,6 +17,7 @@ import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherChildLog from './pages/TeacherChildLog';
 import TeacherNewActivity from './pages/TeacherNewActivity';
 import TeacherMessages from './pages/TeacherMessages';
+import TeacherPickupCheck from './pages/TeacherPickupCheck';
 import ParentFeed from './pages/ParentFeed';
 import ParentDailyReport from './pages/ParentDailyReport';
 import ParentMessages from './pages/ParentMessages';
@@ -160,6 +161,15 @@ function App() {
             element={
               <ProtectedRoute roles={['ADMIN', 'STAFF']}>
                 <TeacherMessages />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/teacher/pickup-check"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+                <TeacherPickupCheck />
               </ProtectedRoute>
             }
           />
