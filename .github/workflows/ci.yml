@@ -17,8 +17,11 @@ jobs:
         with:
           node-version: 18
       - name: Install deps
-        run: npm ci
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn install --frozen-lockfile
       - name: Test
-        run: npm test -- --watchAll=false
+        run: yarn test --watchAll=false
       - name: Build
-        run: npm run build
+        run: yarn build
