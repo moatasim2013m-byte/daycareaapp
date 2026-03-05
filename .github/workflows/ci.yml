@@ -17,25 +17,8 @@ jobs:
         with:
           node-version: 18
       - name: Install deps
-        run: |
-          if [ -f yarn.lock ]; then
-            yarn install --frozen-lockfile
-          elif [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm ci
       - name: Test
-        run: |
-          if [ -f yarn.lock ]; then
-            yarn test --watchAll=false
-          else
-            npm test -- --watchAll=false
-          fi
+        run: npm test -- --watchAll=false
       - name: Build
-        run: |
-          if [ -f yarn.lock ]; then
-            yarn build
-          else
-            npm run build
-          fi
+        run: npm run build
