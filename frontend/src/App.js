@@ -102,6 +102,16 @@ function App() {
             }
           />
 
+
+          <Route
+            path="/guides/parent-communication-step-4"
+            element={
+              <ProtectedRoute>
+                <ParentCommunicationGuide />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/billing"
             element={
@@ -205,6 +215,16 @@ function App() {
             path="/parent/pickups"
             element={
               <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+                <ParentPickups />
+              </ProtectedRoute>
+            }
+          />
+
+
+          <Route
+            path="/teacher/pickup-check"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
                 <ParentPickups />
               </ProtectedRoute>
             }
