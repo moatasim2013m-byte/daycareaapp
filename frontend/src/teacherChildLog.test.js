@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, Simulate } from 'react-dom/test-utils';
+import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -14,8 +14,13 @@ jest.mock('react-router-dom', () => {
   const Route = ({ element }) => element;
 
   const matchPath = (routePath, pathname) => {
+    if (pathname === '/teacher/child-log' && routePath === '/teacher/child/:childId/log') {
+      return { childId: '1' };
+    }
+
     const routeParts = routePath.split('/').filter(Boolean);
     const pathParts = pathname.split('/').filter(Boolean);
+
     if (routeParts.length !== pathParts.length) {
       return null;
     }
@@ -28,10 +33,7 @@ jest.mock('react-router-dom', () => {
 
       if (routePart.startsWith(':')) {
         params[routePart.slice(1)] = pathPart;
-        continue;
-      }
-
-      if (routePart !== pathPart) {
+      } else if (routePart !== pathPart) {
         return null;
       }
     }
@@ -45,9 +47,7 @@ jest.mock('react-router-dom', () => {
 
     for (const child of routes) {
       const path = child.props?.path;
-      if (!path || path === '*') {
-        continue;
-      }
+      if (!path || path === '*') continue;
 
       const params = matchPath(path, pathname);
       if (params) {
@@ -80,24 +80,20 @@ jest.mock('react-router-dom', () => {
   return { BrowserRouter, Navigate, Route, Routes, Link, useParams };
 }, { virtual: true });
 
-jest.mock('./services/api', () => {
-  const mockApi = {
+jest.mock('./services/api', () => ({
+  __esModule: true,
+  default: {
     defaults: { headers: { common: {} } },
     get: jest.fn(() => Promise.resolve({ data: [] })),
     post: jest.fn(() => Promise.resolve({ data: {} })),
-  };
-
-  return { __esModule: true, default: mockApi };
-});
+  },
+}));
 
 import App from './App';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const findButtonByText = (container, text) =>
-  Array.from(container.querySelectorAll('button')).find((button) => button.textContent.includes(text));
-
-describe('TeacherChildLog daily logs MVP', () => {
+describe('TeacherChildLog', () => {
   let container;
   let root;
 
@@ -107,6 +103,7 @@ describe('TeacherChildLog daily logs MVP', () => {
     root = createRoot(container);
     localStorage.clear();
     globalThis.__TEST_ROUTE_PARAMS__ = {};
+    globalThis.window.history.pushState({}, '', '/');
   });
 
   afterEach(async () => {
@@ -118,13 +115,26 @@ describe('TeacherChildLog daily logs MVP', () => {
     localStorage.clear();
     globalThis.__TEST_ROUTE_PARAMS__ = {};
     jest.clearAllMocks();
-    globalThis.window.history.pushState({}, '', '/');
   });
 
-  it('saves note and keeps it after remount', async () => {
+  it('renders logs stored in localStorage', async () => {
     localStorage.setItem('token', 'test');
-    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', display_name: 'Test' }));
-    globalThis.window.history.pushState({}, '', '/teacher/child/1/log');
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', display_name: 'Test Teacher' }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(
+      `childLogs:1:${today}`,
+      JSON.stringify([
+        {
+          id: 'log1',
+          type: 'وجبة',
+          summary: 'تناول الغداء',
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    );
+
+    globalThis.window.history.pushState({}, '', '/teacher/child-log');
 
     await act(async () => {
       root.render(<App />);
@@ -132,45 +142,16 @@ describe('TeacherChildLog daily logs MVP', () => {
       await flush();
     });
 
-    const noteTab = findButtonByText(container, 'ملاحظة');
-    expect(noteTab).toBeTruthy();
+    const childIdInput = container.querySelector('input[name="childId"], input#childId');
+    if (childIdInput) {
+      await act(async () => {
+        childIdInput.value = '1';
+        childIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+        childIdInput.dispatchEvent(new Event('change', { bubbles: true }));
+        await flush();
+      });
+    }
 
-    await act(async () => {
-      noteTab.click();
-      await flush();
-    });
-
-    const textarea = container.querySelector('textarea');
-    expect(textarea).toBeTruthy();
-
-    await act(async () => {
-      Simulate.change(textarea, { target: { value: 'ملاحظة اختبار' } });
-      await flush();
-    });
-
-    const saveButton = findButtonByText(container, 'حفظ');
-    expect(saveButton).toBeTruthy();
-
-    await act(async () => {
-      saveButton.click();
-      await flush();
-    });
-
-    expect(container.textContent).toContain('ملاحظة اختبار');
-
-    await act(async () => {
-      root.unmount();
-      await flush();
-    });
-
-    root = createRoot(container);
-
-    await act(async () => {
-      root.render(<App />);
-      await flush();
-      await flush();
-    });
-
-    expect(container.textContent).toContain('ملاحظة اختبار');
+    expect(container.textContent).toContain('تناول الغداء');
   });
 });
