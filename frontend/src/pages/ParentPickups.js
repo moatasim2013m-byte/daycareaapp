@@ -24,7 +24,8 @@ const readPickups = (key) => {
     const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+
+    return [...parsed].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch {
     return [];
   }
@@ -75,8 +76,8 @@ const ParentPickups = () => {
     const normalizedRelation = relation.trim();
     const normalizedPhone = phone.trim();
 
-    if (!normalizedName || !normalizedRelation || !normalizedPhone) {
-      alert('الرجاء تعبئة الاسم، صلة القرابة، ورقم الهاتف.');
+    if (!normalizedName || !normalizedPhone) {
+      alert('الرجاء تعبئة الاسم ورقم الهاتف.');
       return;
     }
 
@@ -141,11 +142,19 @@ const ParentPickups = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <p className="font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-700">صلة القرابة: {item.relation}</p>
+                        <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
                         <p className="text-sm text-gray-700">الهاتف: {item.phone}</p>
+                        <p className="text-xs text-gray-500">
+                          أضيف في: {item.createdAt
+                            ? new Date(item.createdAt).toLocaleTimeString('ar-JO', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '--:--'}
+                        </p>
                       </div>
                       <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
-                        Delete
+                        حذف
                       </Button>
                     </div>
                   </div>
