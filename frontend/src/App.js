@@ -210,6 +210,16 @@ function App() {
             }
           />
 
+
+          <Route
+            path="/teacher/pickup-check"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+                <ParentPickups />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
