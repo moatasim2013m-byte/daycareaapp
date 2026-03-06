@@ -5,6 +5,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 const readPickups = (key) => {
   try {
     const raw = localStorage.getItem(key);
@@ -18,12 +20,31 @@ const readPickups = (key) => {
 const TeacherPickupCheck = () => {
   const [childId, setChildId] = useState('1');
   const [pickups, setPickups] = useState([]);
+  const [verifiedLog, setVerifiedLog] = useState([]);
 
   const storageKey = useMemo(() => `authorizedPickups:${childId}`, [childId]);
 
   useEffect(() => {
     setPickups(readPickups(storageKey));
   }, [storageKey]);
+
+  const todayKey = useMemo(() => `pickupChecks:${today()}`, []);
+
+  useEffect(() => {
+    setVerifiedLog(readPickups(todayKey));
+  }, [todayKey]);
+
+  const handleVerify = (pickup) => {
+    const entry = {
+      id: `${pickup.id}:${Date.now()}`,
+      childId,
+      name: pickup.name,
+      createdAt: new Date().toISOString(),
+    };
+    const nextLog = [entry, ...verifiedLog];
+    setVerifiedLog(nextLog);
+    localStorage.setItem(todayKey, JSON.stringify(nextLog));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
@@ -64,7 +85,31 @@ const TeacherPickupCheck = () => {
                     <p className="font-semibold text-gray-900">{item.name}</p>
                     <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
                     <p className="text-sm text-gray-700">الهاتف: {item.phone}</p>
+                    <div className="mt-3">
+                      <Button type="button" onClick={() => handleVerify(item)}>
+                        تم التحقق
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>سجل اليوم</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {verifiedLog.length === 0 ? (
+              <p className="text-gray-500">لا توجد عمليات تحقق اليوم</p>
+            ) : (
+              <div className="space-y-2">
+                {verifiedLog.map((item) => (
+                  <p key={item.id} className="text-sm text-gray-700">
+                    {item.name}
+                  </p>
                 ))}
               </div>
             )}
