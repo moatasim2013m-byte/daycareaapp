@@ -35,23 +35,20 @@ const readArrayFromStorage = (key) => {
 };
 
 const readObjectFromStorage = (key) => {
-  if (!key) return {};
+  if (!key) return null;
 
   try {
     const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : {};
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const parsed = raw ? JSON.parse(raw) : null;
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
     return parsed;
   } catch {
-    return {};
+    return null;
   }
-};
-
-const ATTENDANCE_STATUS_LABELS = {
-  PRESENT: 'حاضر',
-  ABSENT: 'غائب',
-  LATE: 'متأخر',
-  PICKED_UP: 'انصرف',
 };
 
 const looksLikeImage = (url) => /(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?.*)?$/i.test((url || '').trim());
@@ -62,6 +59,13 @@ const LOG_BADGES = {
   DIAPER: 'حفاض',
   MOOD: 'مزاج',
   NOTE: 'ملاحظة',
+};
+
+const ATTENDANCE_LABELS = {
+  PRESENT: 'حاضر',
+  ABSENT: 'غائب',
+  LATE: 'متأخر',
+  PICKED_UP: 'انصرف',
 };
 
 const formatLogSummary = (log) => {
@@ -90,6 +94,28 @@ const formatLogSummary = (log) => {
   }
 
   return '';
+};
+
+const inferRoomIdFromCache = (targetChildId) => {
+  const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+
+  for (const key of candidateKeys) {
+    const list = parseCachedList(localStorage.getItem(key));
+    if (list.length === 0) continue;
+
+    const exactMatch = list.find(
+      (child) => String(child?.child_id ?? child?.childId ?? child?.id) === String(targetChildId)
+    );
+
+    const candidate = exactMatch || list[0];
+    const roomId = candidate?.room_id ?? candidate?.roomId ?? candidate?.classroom_id ?? candidate?.classroomId;
+
+    if (roomId !== undefined && roomId !== null && String(roomId).trim() !== '') {
+      return String(roomId);
+    }
+  }
+
+  return null;
 };
 
 const ParentDailyReport = () => {
@@ -155,11 +181,28 @@ const ParentDailyReport = () => {
     );
   }, [childId, selectedDate]);
 
-  const attendanceStatus = useMemo(() => {
-    const attendanceKey = `attendance:1:${selectedDate}`;
+  const attendanceSummary = useMemo(() => {
+    const inferredRoomId = inferRoomIdFromCache(childId);
+    const roomId = inferredRoomId || '1';
+
+    const attendanceKey = `attendance:${roomId}:${selectedDate}`;
     const attendanceByChild = readObjectFromStorage(attendanceKey);
-    const entry = attendanceByChild[childId];
-    return ATTENDANCE_STATUS_LABELS[entry?.status] || 'بدون حالة';
+
+    if (!attendanceByChild) {
+      return null;
+    }
+
+    const childAttendance = attendanceByChild[String(childId)];
+
+    if (!childAttendance?.status) {
+      return null;
+    }
+
+    return {
+      roomId,
+      status: childAttendance.status,
+      updatedAt: childAttendance.updatedAt,
+    };
   }, [childId, selectedDate]);
 
   return (
@@ -206,7 +249,24 @@ const ParentDailyReport = () => {
             <CardTitle>ملخص الحضور</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant="secondary">{attendanceStatus}</Badge>
+            {attendanceSummary ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge>{ATTENDANCE_LABELS[attendanceSummary.status] || attendanceSummary.status}</Badge>
+                  <span className="text-sm text-gray-500">الغرفة: {attendanceSummary.roomId}</span>
+                </div>
+                {attendanceSummary.updatedAt && (
+                  <p className="text-sm text-gray-600">
+                    آخر تحديث: {new Date(attendanceSummary.updatedAt).toLocaleTimeString('ar-JO', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-600">لا يوجد تسجيل حضور لهذا اليوم</p>
+            )}
           </CardContent>
         </Card>
 
