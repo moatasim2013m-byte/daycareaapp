@@ -71,7 +71,7 @@ describe('Teacher pickup check', () => {
     jest.clearAllMocks();
   });
 
-  it('renders authorized pickups from localStorage for staff route', async () => {
+  it('renders pickup check flow and writes verification to today log', async () => {
     localStorage.setItem('token', 'test');
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF', display_name: 'Test Staff' }));
     localStorage.setItem(
@@ -80,7 +80,7 @@ describe('Teacher pickup check', () => {
         {
           id: 'p1',
           name: 'أبو أحمد',
-          relation: 'عم',
+          relation: 'الأب',
           phone: '0790000000',
           createdAt: new Date().toISOString(),
         },
@@ -93,16 +93,18 @@ describe('Teacher pickup check', () => {
       root.render(<App />);
     });
 
-    const childIdInput = container.querySelector('input[name="childId"], input#childId');
-    if (childIdInput) {
-      await act(async () => {
-        childIdInput.value = '1';
-        childIdInput.dispatchEvent(new Event('input', { bubbles: true }));
-        childIdInput.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-    }
-
+    expect(container.textContent).toContain('التحقق من الاستلام');
     expect(container.textContent).toContain('أبو أحمد');
-    expect(container.textContent).toContain('0790000000');
+
+    const verifyButton = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent.includes('تم التحقق')
+    );
+
+    await act(async () => {
+      verifyButton.click();
+    });
+
+    expect(container.textContent).toContain('سجل اليوم');
+    expect(container.textContent).toContain('أبو أحمد');
   });
 });
