@@ -1,70 +1,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
-
-const readObject = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return parsed;
-  } catch {
-    return {};
-  }
-};
-
-const readArray = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const getChildren = () => {
-  const keys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
-
-  for (const key of keys) {
-    const list = parseCachedList(localStorage.getItem(key));
-    if (list.length > 0) {
-      const normalized = list
-        .map((child, index) => {
-          const id = child?.child_id ?? child?.childId ?? child?.id;
-          if (id === undefined || id === null || String(id).trim() === '') return null;
-
-          return {
-            id: String(id),
-            name: child?.full_name || child?.name || child?.display_name || `الطفل ${index + 1}`,
-          };
-        })
-        .filter(Boolean);
-
-      if (normalized.length > 0) return normalized;
-    }
-  }
-
-  return [1, 2, 3, 4, 5].map((n) => ({ id: String(n), name: `الطفل ${n}` }));
-};
 
 const STATUS_LABELS = {
   PRESENT: 'حاضر',
@@ -72,8 +10,6 @@ const STATUS_LABELS = {
   LATE: 'متأخر',
   PICKED_UP: 'انصرف',
 };
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 const readObjectFromStorage = (key) => {
   try {
@@ -99,20 +35,30 @@ const readListFromStorage = (key) => {
 
 const TeacherToday = () => {
   const selectedDate = today();
+  const context = resolveCachedChildContext();
+  const roomId = context?.roomId || '1';
 
   const attendanceSummary = useMemo(() => {
-    const attendance = readObjectFromStorage(`attendance:1:${selectedDate}`);
+    const attendance = readObjectFromStorage(`attendance:${roomId}:${selectedDate}`);
     return Object.values(attendance)
       .map((item) => STATUS_LABELS[item?.status] || null)
       .filter(Boolean);
-  }, [selectedDate]);
+  }, [roomId, selectedDate]);
 
   const activitySummary = useMemo(() => {
-    const activities = readListFromStorage(`activityFeed:${selectedDate}`);
+    const roomEntries = readListFromStorage(`activityFeedRoom:${selectedDate}`)
+      .filter((entry) => {
+        const entryRoomId = entry?.roomId ?? entry?.room_id ?? entry?.classroomId ?? entry?.classroom_id;
+        if (entryRoomId === undefined || entryRoomId === null || entryRoomId === '') return true;
+        return String(entryRoomId) === String(roomId);
+      });
+
+    const activities = roomEntries.length > 0 ? roomEntries : readListFromStorage(`activityFeed:${selectedDate}`);
+
     return activities
       .map((activity) => activity?.text || activity?.content || activity?.title || '')
       .filter(Boolean);
-  }, [selectedDate]);
+  }, [roomId, selectedDate]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
