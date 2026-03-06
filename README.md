@@ -74,6 +74,21 @@ gcloud run deploy daycareaapp-frontend \
 
 > Cloud Run services cannot call each other over `localhost`; always use the deployed backend HTTPS URL in `REACT_APP_BACKEND_URL`.
 
+
+## Backend vs Frontend API Status (Current)
+
+A current audit of frontend API usage vs backend implementation is documented in:
+
+- `docs/current_status.md`
+- `API_CONTRACT.md`
+
+Snapshot:
+
+- All endpoints currently called via `frontend/src/services/api.js` consumers are implemented in backend routes.
+- Several parent/teacher experience pages are still frontend-only MVP flows backed by browser `localStorage` (not server APIs yet).
+- Backlog API surfaces from older planning docs (for example auth refresh/logout and CRM/forms modules) are not blocking current wired screens but remain future backend work.
+
+---
 ## Parent Help Center Content
 
 - Consolidated parent onboarding + bus tracking article: `docs/illumine_parents_guide.md`
