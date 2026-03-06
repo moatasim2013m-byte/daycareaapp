@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { readCachedChildContexts, resolveCachedChildContext } from '../utils/childContext';
 
 const STATUS_OPTIONS = [
   { value: 'PRESENT', label: 'حاضر' },
@@ -21,47 +22,6 @@ const STATUS_LABELS = {
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
-
-const getChildrenFromCache = () => {
-  const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
-
-  for (const key of candidateKeys) {
-    const list = parseCachedList(localStorage.getItem(key));
-    if (list.length > 0) {
-      const normalized = list
-        .map((child, index) => {
-          const id = child?.child_id ?? child?.childId ?? child?.id;
-          if (id === undefined || id === null) return null;
-
-          return {
-            childId: String(id),
-            name: child?.full_name || child?.name || child?.display_name || `الطفل ${index + 1}`,
-          };
-        })
-        .filter(Boolean);
-
-      if (normalized.length > 0) {
-        return normalized;
-      }
-    }
-  }
-
-  return [1, 2, 3, 4, 5].map((n) => ({ childId: String(n), name: `الطفل ${n}` }));
-};
 
 const readAttendance = (key) => {
   try {
@@ -82,7 +42,24 @@ const TeacherAttendance = () => {
   const storageKey = useMemo(() => `attendance:${roomId}:${selectedDate}`, [roomId, selectedDate]);
 
   useEffect(() => {
-    setChildren(getChildrenFromCache());
+    const context = resolveCachedChildContext();
+    if (context?.roomId) {
+      setRoomId(context.roomId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const cachedChildren = readCachedChildContexts().map((child) => ({
+      childId: child.childId,
+      name: child.childName,
+    }));
+
+    if (cachedChildren.length > 0) {
+      setChildren(cachedChildren);
+      return;
+    }
+
+    setChildren([1, 2, 3, 4, 5].map((n) => ({ childId: String(n), name: `الطفل ${n}` })));
   }, []);
 
   useEffect(() => {

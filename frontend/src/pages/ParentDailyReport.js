@@ -5,22 +5,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
 
 const readArrayFromStorage = (key) => {
   if (!key) return [];
@@ -96,27 +84,6 @@ const formatLogSummary = (log) => {
   return '';
 };
 
-const inferRoomIdFromCache = (targetChildId) => {
-  const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
-
-  for (const key of candidateKeys) {
-    const list = parseCachedList(localStorage.getItem(key));
-    if (list.length === 0) continue;
-
-    const exactMatch = list.find(
-      (child) => String(child?.child_id ?? child?.childId ?? child?.id) === String(targetChildId)
-    );
-
-    const candidate = exactMatch || list[0];
-    const roomId = candidate?.room_id ?? candidate?.roomId ?? candidate?.classroom_id ?? candidate?.classroomId;
-
-    if (roomId !== undefined && roomId !== null && String(roomId).trim() !== '') {
-      return String(roomId);
-    }
-  }
-
-  return null;
-};
 
 const ParentDailyReport = () => {
   const [childId, setChildId] = useState('1');
@@ -124,20 +91,12 @@ const ParentDailyReport = () => {
   const [selectedDate, setSelectedDate] = useState(getToday());
 
   useEffect(() => {
-    const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+    const context = resolveCachedChildContext();
 
-    for (const key of candidateKeys) {
-      const list = parseCachedList(localStorage.getItem(key));
-      if (list.length > 0) {
-        const firstChild = list[0];
-        const cachedId = firstChild?.child_id ?? firstChild?.childId ?? firstChild?.id;
-
-        if (cachedId !== undefined && cachedId !== null && String(cachedId).trim() !== '') {
-          setChildId(String(cachedId));
-          setNeedsChildInput(false);
-          return;
-        }
-      }
+    if (context?.childId) {
+      setChildId(context.childId);
+      setNeedsChildInput(false);
+      return;
     }
 
     setNeedsChildInput(true);
@@ -182,8 +141,8 @@ const ParentDailyReport = () => {
   }, [childId, selectedDate]);
 
   const attendanceSummary = useMemo(() => {
-    const inferredRoomId = inferRoomIdFromCache(childId);
-    const roomId = inferredRoomId || '1';
+    const context = resolveCachedChildContext(childId);
+    const roomId = context?.roomId || '1';
 
     const attendanceKey = `attendance:${roomId}:${selectedDate}`;
     const attendanceByChild = readObjectFromStorage(attendanceKey);
