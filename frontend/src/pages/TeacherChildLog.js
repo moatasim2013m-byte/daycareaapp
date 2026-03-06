@@ -65,8 +65,39 @@ const getSummaryFromPayload = (log) => {
 };
 
 const TeacherChildLog = () => {
-  const { childId: routeChildId } = useParams();
-  const childId = String(routeChildId || '1');
+  const { childId } = useParams();
+  const noteStorageKey = `teacher-child-log-${childId}-note`;
+  const [activeTab, setActiveTab] = useState('note');
+  const [noteInput, setNoteInput] = useState('');
+  const [savedNote, setSavedNote] = useState('');
+
+  useEffect(() => {
+    const storedNote = localStorage.getItem(noteStorageKey);
+    if (storedNote) {
+      setSavedNote(storedNote);
+    }
+  }, [noteStorageKey]);
+
+  const handleSave = () => {
+    const value = noteInput.trim();
+    if (!value) {
+      return;
+    }
+
+    setSavedNote(value);
+    localStorage.setItem(noteStorageKey, value);
+    setNoteInput('');
+  };
+
+  const [selectedDate, setSelectedDate] = useState(todayDate());
+  const [activeType, setActiveType] = useState('MEAL');
+  const [childName, setChildName] = useState(`الطفل رقم ${childId}`);
+  const [entries, setEntries] = useState([]);
+
+  const [mealPreset, setMealPreset] = useState('فطور');
+  const [mealCustomName, setMealCustomName] = useState('');
+  const [mealAmount, setMealAmount] = useState('');
+  const [mealNotes, setMealNotes] = useState('');
 
   const [selectedDate, setSelectedDate] = useState(today());
   const [activeType, setActiveType] = useState('MEAL');
