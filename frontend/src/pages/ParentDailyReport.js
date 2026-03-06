@@ -34,6 +34,26 @@ const readArrayFromStorage = (key) => {
   }
 };
 
+const readObjectFromStorage = (key) => {
+  if (!key) return {};
+
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+};
+
+const ATTENDANCE_STATUS_LABELS = {
+  PRESENT: 'حاضر',
+  ABSENT: 'غائب',
+  LATE: 'متأخر',
+  PICKED_UP: 'انصرف',
+};
+
 const looksLikeImage = (url) => /(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?.*)?$/i.test((url || '').trim());
 
 const LOG_BADGES = {
@@ -135,6 +155,13 @@ const ParentDailyReport = () => {
     );
   }, [childId, selectedDate]);
 
+  const attendanceStatus = useMemo(() => {
+    const attendanceKey = `attendance:1:${selectedDate}`;
+    const attendanceByChild = readObjectFromStorage(attendanceKey);
+    const entry = attendanceByChild[childId];
+    return ATTENDANCE_STATUS_LABELS[entry?.status] || 'بدون حالة';
+  }, [childId, selectedDate]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -179,7 +206,7 @@ const ParentDailyReport = () => {
             <CardTitle>ملخص الحضور</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">سيتم ربطه بالحضور لاحقاً</p>
+            <Badge variant="secondary">{attendanceStatus}</Badge>
           </CardContent>
         </Card>
 
