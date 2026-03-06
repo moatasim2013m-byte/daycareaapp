@@ -15,16 +15,15 @@ This repository contains:
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 18+ and Yarn 1.x (or npm)
+- Node.js 20 and Yarn 1.x
 - MongoDB instance (local or hosted)
 
 ## Cloud Run Readiness (backend + frontend)
 
-### What is already ready
+### Verified required environment variables
 
-- Frontend reads the backend base URL from `REACT_APP_BACKEND_URL` (`frontend/src/services/api.js`).
-- Backend reads Mongo settings from `MONGO_URL` and `DB_NAME` (`backend/server.py`).
-- Backend container binds to `PORT` and defaults to `8080`, which matches Cloud Run expectations (`backend/Dockerfile`).
+- Frontend reads backend base URL from `REACT_APP_BACKEND_URL` in `frontend/src/services/api.js`.
+- Backend reads Mongo settings from `MONGO_URL` and `DB_NAME` in `backend/server.py` (with default `DB_NAME=daycare_db` if omitted).
 
 ### Manual inputs required
 
@@ -35,17 +34,18 @@ Set these values before deploying:
 - `MONGO_URL`: MongoDB connection string
 - `DB_NAME`: database name used by the backend
 
-### Deploy steps (in order)
+### Deploy steps (exact order)
 
-1. Set project and region:
+1. Authenticate and set project/region:
 
 ```bash
+gcloud auth login
 PROJECT_ID=<YOUR_GCP_PROJECT_ID>
 REGION=<YOUR_REGION>
 gcloud config set project "$PROJECT_ID"
 ```
 
-2. Deploy backend with required runtime env vars:
+2. Deploy backend from source with required runtime env vars:
 
 ```bash
 gcloud run deploy daycareaapp-backend \
@@ -57,7 +57,7 @@ gcloud run deploy daycareaapp-backend \
 
 3. Copy backend URL from deploy output (example: `https://daycareaapp-backend-xxxxx-uc.a.run.app`).
 
-4. Deploy frontend and inject backend URL at build time:
+4. Deploy frontend from source and inject backend URL at build time:
 
 ```bash
 gcloud run deploy daycareaapp-frontend \
