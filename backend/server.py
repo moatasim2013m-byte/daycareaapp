@@ -23,22 +23,31 @@ async def lifespan(app: FastAPI):
     global client, db
 
     if not MONGO_URL:
-        raise RuntimeError("MONGO_URL environment variable is required")
-    
-    # Startup
-    client = AsyncIOMotorClient(MONGO_URL)
-    db = client[DB_NAME]
-    
-    # Create indexes
-    await create_indexes()
-    
-    print(f"Connected to MongoDB: {DB_NAME}")
-    
+        print("Warning: MONGO_URL is not configured; API will start without database connectivity")
+        client = None
+        db = None
+    else:
+        try:
+            # Startup
+            client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+            db = client[DB_NAME]
+
+            # Validate connection and create indexes
+            await client.admin.command("ping")
+            await create_indexes()
+
+            print(f"Connected to MongoDB: {DB_NAME}")
+        except Exception as exc:
+            print(f"Warning: MongoDB startup failed: {exc}")
+            client = None
+            db = None
+
     yield
-    
+
     # Shutdown
-    client.close()
-    print("MongoDB connection closed")
+    if client is not None:
+        client.close()
+        print("MongoDB connection closed")
 
 
 async def create_indexes():
