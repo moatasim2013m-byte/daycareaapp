@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const getToday = () => new Date().toISOString().slice(0, 10);
 
 const readArray = (key) => {
   try {
@@ -31,14 +31,14 @@ const TeacherPickupCheck = () => {
   );
 
   useEffect(() => {
-    setPickups(readArray(pickupsKey));
+    setAuthorizedPeople(readArrayFromStorage(pickupsKey));
   }, [pickupsKey]);
 
   useEffect(() => {
-    const entries = readArray(checksKey).sort(
+    const sortedChecks = readArrayFromStorage(checksKey).sort(
       (a, b) => new Date(b.verifiedAt).getTime() - new Date(a.verifiedAt).getTime()
     );
-    setVerificationLog(entries);
+    setVerificationLog(sortedChecks);
   }, [checksKey]);
 
   const filteredPickups = useMemo(() => {
@@ -52,10 +52,10 @@ const TeacherPickupCheck = () => {
       const phone = String(item?.phone || '').toLowerCase();
       return name.includes(query) || phone.includes(query);
     });
-  }, [pickups, search]);
+  }, [authorizedPeople, search]);
 
   const handleVerify = (person) => {
-    const event = {
+    const entry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       childId: normalizedChildId,
       personName: person?.name || '',
@@ -74,7 +74,7 @@ const TeacherPickupCheck = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold text-gray-900">التحقق من الاستلام</h1>
           <Button asChild variant="outline">
@@ -83,7 +83,7 @@ const TeacherPickupCheck = () => {
         </div>
 
         <Card>
-          <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 gap-4 pt-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
               <Input
@@ -94,12 +94,12 @@ const TeacherPickupCheck = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pickup-check-search">بحث بالاسم أو الهاتف</Label>
+              <Label htmlFor="pickup-check-search">بحث بالاسم أو الهاتف (اختياري)</Label>
               <Input
                 id="pickup-check-search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث هنا"
+                placeholder="اكتب الاسم أو رقم الهاتف"
               />
             </div>
           </CardContent>
@@ -110,7 +110,7 @@ const TeacherPickupCheck = () => {
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredPickups.length === 0 ? (
+            {filteredAuthorizedPeople.length === 0 ? (
               <p className="text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</p>
             ) : (
               <div className="space-y-3">
@@ -126,7 +126,7 @@ const TeacherPickupCheck = () => {
                       وقت الإضافة: {item.createdAt ? new Date(item.createdAt).toLocaleString('ar-EG') : '-'}
                     </p>
                     <div className="mt-3">
-                      <Button type="button" onClick={() => handleVerify(item)}>
+                      <Button type="button" onClick={() => handleVerify(person)}>
                         تم التحقق
                       </Button>
                     </div>
