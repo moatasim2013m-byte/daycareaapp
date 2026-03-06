@@ -18,85 +18,61 @@ This repository contains:
 - Node.js 18+ and Yarn 1.x (or npm)
 - MongoDB instance (local or hosted)
 
-## Run on Google Cloud Run (recommended for hosted preview)
+## Cloud Run Readiness (backend + frontend)
 
-Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
+### What is already ready
 
-### 0) One-time setup: create separate service accounts
+- Frontend reads the backend base URL from `REACT_APP_BACKEND_URL` (`frontend/src/services/api.js`).
+- Backend reads Mongo settings from `MONGO_URL` and `DB_NAME` (`backend/server.py`).
+- Backend container binds to `PORT` and defaults to `8080`, which matches Cloud Run expectations (`backend/Dockerfile`).
 
-Use separate identities so backend and frontend can have different permissions:
+### Manual inputs required
+
+Set these values before deploying:
+
+- `PROJECT_ID`: your GCP project ID
+- `REGION`: Cloud Run region (example: `us-central1`)
+- `MONGO_URL`: MongoDB connection string
+- `DB_NAME`: database name used by the backend
+
+### Deploy steps (in order)
+
+1. Set project and region:
 
 ```bash
 PROJECT_ID=<YOUR_GCP_PROJECT_ID>
 REGION=<YOUR_REGION>
-DEPLOYER=<YOUR_USER_OR_CICD_SA_EMAIL>
-
 gcloud config set project "$PROJECT_ID"
-
-gcloud iam service-accounts create daycareaapp-backend-sa \
-  --display-name="DaycareApp Backend Cloud Run SA"
-
-gcloud iam service-accounts create daycareaapp-frontend-sa \
-  --display-name="DaycareApp Frontend Cloud Run SA"
 ```
 
-Allow your deployer identity to attach those runtime service accounts during `gcloud run deploy`:
-
-```bash
-gcloud iam service-accounts add-iam-policy-binding \
-  daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --member="serviceAccount:${DEPLOYER}" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud iam service-accounts add-iam-policy-binding \
-  daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --member="serviceAccount:${DEPLOYER}" \
-  --role="roles/iam.serviceAccountUser"
-```
-
-> If deploying from your local user account instead of CI, use:
-> `--member="user:<YOUR_GOOGLE_ACCOUNT_EMAIL>"`.
-
-If backend uses Secret Manager for `MONGO_URL`, grant only backend runtime SA access:
-
-```bash
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-```
-
-### 1) Deploy backend service
+2. Deploy backend with required runtime env vars:
 
 ```bash
 gcloud run deploy daycareaapp-backend \
   --source ./backend \
   --region "$REGION" \
   --allow-unauthenticated \
-  --service-account daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
+  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=<YOUR_DB_NAME>"
 ```
 
-After deploy, copy the backend HTTPS URL, for example:
+3. Copy backend URL from deploy output (example: `https://daycareaapp-backend-xxxxx-uc.a.run.app`).
 
-`https://daycareaapp-backend-xxxxx-uc.a.run.app`
-
-### 2) Deploy frontend service (pointing to backend)
+4. Deploy frontend and inject backend URL at build time:
 
 ```bash
 gcloud run deploy daycareaapp-frontend \
   --source ./frontend \
   --region "$REGION" \
   --allow-unauthenticated \
-  --service-account daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
 ```
 
-### 3) Verify Cloud Run
+5. Verify:
 
-- Backend health: `GET https://<backend-url>/api/health`
-- Frontend: open `https://<frontend-url>` and confirm API calls succeed.
+- `GET https://<backend-url>/api/health`
+- Open `https://<frontend-url>` and confirm API calls succeed.
 
-> Important: do **not** use `http://localhost:8000` or `http://localhost:3000` in Cloud Run settings.
+> Cloud Run services cannot call each other over `localhost`; always use the deployed backend HTTPS URL in `REACT_APP_BACKEND_URL`.
 
 ## Parent Help Center Content
 
