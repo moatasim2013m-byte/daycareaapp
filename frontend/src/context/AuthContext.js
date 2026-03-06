@@ -35,6 +35,15 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
+  const demoLogin = ({ token, user: userData }) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+    setUser(userData);
+    return userData;
+  };
+
   const register = async (data) => {
     const response = await api.post('/auth/register', data);
     const { access_token, user: userData } = response.data;
@@ -58,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    demoLogin,
     register,
     logout,
     isAuthenticated: !!user,
