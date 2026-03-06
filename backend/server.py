@@ -21,6 +21,9 @@ db = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global client, db
+
+    if not MONGO_URL:
+        raise RuntimeError("MONGO_URL environment variable is required")
     
     # Startup
     client = AsyncIOMotorClient(MONGO_URL)
