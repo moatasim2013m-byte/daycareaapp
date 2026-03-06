@@ -23,20 +23,28 @@ const TeacherPickupCheck = () => {
   const [pickups, setPickups] = useState([]);
   const [verificationLog, setVerificationLog] = useState([]);
 
-  const normalizedChildId = useMemo(() => String(childId || '1').trim() || '1', [childId]);
-  const pickupsKey = useMemo(() => `authorizedPickups:${normalizedChildId}`, [normalizedChildId]);
+  const normalizedChildId = useMemo(() => {
+    const trimmed = String(childId ?? '').trim();
+    return trimmed || '1';
+  }, [childId]);
+
+  const pickupsKey = useMemo(
+    () => `authorizedPickups:${normalizedChildId}`,
+    [normalizedChildId]
+  );
+
   const checksKey = useMemo(
-    () => `pickupChecks:${normalizedChildId}:${today()}`,
+    () => `pickupChecks:${normalizedChildId}:${getToday()}`,
     [normalizedChildId]
   );
 
   useEffect(() => {
-    setAuthorizedPeople(readArrayFromStorage(pickupsKey));
+    setPickups(readArray(pickupsKey));
   }, [pickupsKey]);
 
   useEffect(() => {
-    const sortedChecks = readArrayFromStorage(checksKey).sort(
-      (a, b) => new Date(b.verifiedAt).getTime() - new Date(a.verifiedAt).getTime()
+    const sortedChecks = readArray(checksKey).sort(
+      (a, b) => new Date(b?.verifiedAt || 0).getTime() - new Date(a?.verifiedAt || 0).getTime()
     );
     setVerificationLog(sortedChecks);
   }, [checksKey]);
@@ -52,10 +60,10 @@ const TeacherPickupCheck = () => {
       const phone = String(item?.phone || '').toLowerCase();
       return name.includes(query) || phone.includes(query);
     });
-  }, [authorizedPeople, search]);
+  }, [pickups, search]);
 
   const handleVerify = (person) => {
-    const entry = {
+    const event = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       childId: normalizedChildId,
       personName: person?.name || '',
@@ -65,7 +73,7 @@ const TeacherPickupCheck = () => {
     };
 
     const nextLog = [event, ...verificationLog].sort(
-      (a, b) => new Date(b.verifiedAt).getTime() - new Date(a.verifiedAt).getTime()
+      (a, b) => new Date(b?.verifiedAt || 0).getTime() - new Date(a?.verifiedAt || 0).getTime()
     );
 
     localStorage.setItem(checksKey, JSON.stringify(nextLog));
@@ -110,7 +118,7 @@ const TeacherPickupCheck = () => {
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredAuthorizedPeople.length === 0 ? (
+            {filteredPickups.length === 0 ? (
               <p className="text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</p>
             ) : (
               <div className="space-y-3">
@@ -122,11 +130,13 @@ const TeacherPickupCheck = () => {
                     <p className="text-sm text-gray-700">الاسم: {item.name || '-'}</p>
                     <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
                     <p className="text-sm text-gray-700">رقم الهاتف: {item.phone || '-'}</p>
-                    <p className="text-sm text-gray-700">
-                      وقت الإضافة: {item.createdAt ? new Date(item.createdAt).toLocaleString('ar-EG') : '-'}
-                    </p>
+                    {item.createdAt ? (
+                      <p className="text-sm text-gray-700">
+                        وقت الإضافة: {new Date(item.createdAt).toLocaleString('ar-EG')}
+                      </p>
+                    ) : null}
                     <div className="mt-3">
-                      <Button type="button" onClick={() => handleVerify(person)}>
+                      <Button type="button" onClick={() => handleVerify(item)}>
                         تم التحقق
                       </Button>
                     </div>
