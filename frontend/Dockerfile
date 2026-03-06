@@ -2,13 +2,13 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-COPY frontend/package.json /app/package.json
-RUN npm install
+COPY package.json /app/package.json
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --non-interactive
 
-COPY frontend /app
+COPY . /app
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
-RUN npm run build
+RUN yarn build
 
 # Runtime stage
 FROM nginx:1.27-alpine

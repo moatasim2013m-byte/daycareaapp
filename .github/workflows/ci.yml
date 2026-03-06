@@ -15,8 +15,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "18"
-      - name: Install deps
+          node-version: "20"
+      - name: Install deps (Yarn 1.x)
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
