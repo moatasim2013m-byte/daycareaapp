@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import OperationFailure
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -64,16 +65,11 @@ async def create_indexes():
     await db.sessions.create_index([("state", 1), ("checkin_at", -1)])
     await db.sessions.create_index([("child_id", 1), ("state", 1)])
 
-    # Check-in sessions (Reception Phase 4)
-    await db.checkin_sessions.create_index("session_id", unique=True)
-    await db.checkin_sessions.create_index([("status", 1), ("branch_id", 1), ("check_in_time", -1)])
-    await db.checkin_sessions.create_index([("customer_id", 1), ("status", 1)])
-    await db.checkin_sessions.create_index([("check_out_time", -1), ("status", 1)])
-    
     # Check-in sessions (reception operations)
     await db.checkin_sessions.create_index("session_id", unique=True)
     await db.checkin_sessions.create_index([("status", 1), ("branch_id", 1), ("check_in_time", -1)])
     await db.checkin_sessions.create_index([("customer_id", 1), ("status", 1)])
+    await db.checkin_sessions.create_index([("check_out_time", -1), ("status", 1)])
     await db.checkin_sessions.create_index([("branch_id", 1), ("check_in_time", -1)])
 
     # Subscriptions
@@ -90,8 +86,33 @@ async def create_indexes():
     await db.entitlement_usage.create_index("usage_id", unique=True)
     await db.entitlement_usage.create_index([("subscription_id", 1), ("usage_date", 1)])
     
-    # Audit logs
-    await db.audit_logs.create_index("audit_id", unique=True)
+    # Audit logs: unique only when audit_id exists and is non-null string
+    try:
+        await db.audit_logs.create_index(
+            "audit_id",
+            unique=True,
+            partialFilterExpression={
+                "audit_id": {"$exists": True, "$type": "string", "$ne": None}
+            },
+        )
+    except OperationFailure as exc:
+        if exc.code in (85, 86):
+            try:
+                await db.audit_logs.drop_index("audit_id_1")
+            except Exception as drop_exc:
+                print(f"Warning: could not drop legacy audit_id index: {drop_exc}")
+            try:
+                await db.audit_logs.create_index(
+                    "audit_id",
+                    unique=True,
+                    partialFilterExpression={
+                        "audit_id": {"$exists": True, "$type": "string", "$ne": None}
+                    },
+                )
+            except Exception as recreate_exc:
+                print(f"Warning: could not create partial unique audit_id index: {recreate_exc}")
+        else:
+            print(f"Warning: audit_id index creation skipped: {exc}")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
     
     # Payments

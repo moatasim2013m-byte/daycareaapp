@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -33,175 +33,49 @@ const readPickups = (key) => {
 
 const ParentPickups = () => {
   const [childId, setChildId] = useState('1');
-  const [needsChildInput, setNeedsChildInput] = useState(true);
-  const [pickups, setPickups] = useState([]);
 
-  const [name, setName] = useState('');
-  const [relation, setRelation] = useState('');
-  const [phone, setPhone] = useState('');
-
-  useEffect(() => {
-    const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
-
-    for (const key of candidateKeys) {
-      const list = parseCachedList(localStorage.getItem(key));
-      if (list.length > 0) {
-        const firstChild = list[0];
-        const cachedId = firstChild?.child_id ?? firstChild?.childId ?? firstChild?.id;
-
-        if (cachedId !== undefined && cachedId !== null && String(cachedId).trim() !== '') {
-          setChildId(String(cachedId));
-          setNeedsChildInput(false);
-          return;
-        }
-      }
+  const authorizedPickups = useMemo(() => {
+    const stored = localStorage.getItem(`authorizedPickups:${childId}`);
+    if (!stored) {
+      return [];
     }
 
-    setNeedsChildInput(true);
-  }, []);
-
-  const storageKey = useMemo(() => `authorizedPickups:${childId}`, [childId]);
-
-  useEffect(() => {
-    setPickups(readPickups(storageKey));
-  }, [storageKey]);
-
-  const persistPickups = (nextPickups) => {
-    localStorage.setItem(storageKey, JSON.stringify(nextPickups));
-    setPickups(nextPickups);
-  };
-
-  const handleAdd = () => {
-    const normalizedName = name.trim();
-    const normalizedRelation = relation.trim();
-    const normalizedPhone = phone.trim();
-
-    if (!normalizedName || !normalizedPhone) {
-      alert('الرجاء تعبئة الاسم ورقم الهاتف.');
-      return;
+    try {
+      return JSON.parse(stored);
+    } catch (_error) {
+      return [];
     }
-
-    const nextItem = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: normalizedName,
-      relation: normalizedRelation,
-      phone: normalizedPhone,
-      createdAt: new Date().toISOString(),
-    };
-
-    persistPickups([nextItem, ...pickups]);
-
-    setName('');
-    setRelation('');
-    setPhone('');
-  };
-
-  const handleDelete = (id) => {
-    const nextPickups = pickups.filter((item) => item.id !== id);
-    persistPickups(nextPickups);
-  };
+  }, [childId]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">المخولين للاستلام</h1>
-            <p className="text-gray-600 mt-1">إدارة الأشخاص المصرح لهم باستلام الطفل</p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/">العودة إلى لوحة التحكم</Link>
-          </Button>
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900">ولي الأمر — الاستلام</h1>
+        <p className="text-gray-600">صفحة مبدئية لإدارة طلبات وتسليم الاستلام.</p>
+
+        <label className="block text-sm font-medium text-gray-700" htmlFor="childId">
+          رقم الطفل
+        </label>
+        <input
+          id="childId"
+          name="childId"
+          value={childId}
+          onChange={(event) => setChildId(event.target.value)}
+          className="w-full rounded border border-gray-300 px-3 py-2"
+        />
+
+        <div className="space-y-2">
+          {authorizedPickups.map((pickup) => (
+            <div key={pickup.id} className="rounded border border-gray-200 bg-white p-3">
+              <p className="font-medium text-gray-900">{pickup.name}</p>
+              <p className="text-gray-600">{pickup.phone}</p>
+            </div>
+          ))}
         </div>
 
-        {needsChildInput && (
-          <Card>
-            <CardContent className="pt-6 max-w-xs space-y-2">
-              <Label htmlFor="pickup-child-id">معرف الطفل</Label>
-              <Input
-                id="pickup-child-id"
-                value={childId}
-                onChange={(e) => setChildId(e.target.value || '1')}
-                placeholder="1"
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pickup List</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pickups.length === 0 ? (
-              <p className="text-gray-500">لا يوجد أشخاص مخولين بعد</p>
-            ) : (
-              <div className="space-y-3">
-                {pickups.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
-                        <p className="text-sm text-gray-700">الهاتف: {item.phone}</p>
-                        <p className="text-xs text-gray-500">
-                          أضيف في: {item.createdAt
-                            ? new Date(item.createdAt).toLocaleTimeString('ar-JO', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : '--:--'}
-                        </p>
-                      </div>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
-                        حذف
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>إضافة شخص مخول</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="pickup-name">الاسم</Label>
-              <Input
-                id="pickup-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="الاسم الكامل"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pickup-relation">صلة القرابة</Label>
-              <Input
-                id="pickup-relation"
-                value={relation}
-                onChange={(e) => setRelation(e.target.value)}
-                placeholder="مثال: خال / جدة"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pickup-phone">رقم الهاتف</Label>
-              <Input
-                id="pickup-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07xxxxxxxx"
-              />
-            </div>
-
-            <Button type="button" onClick={handleAdd}>إضافة شخص مخول</Button>
-          </CardContent>
-        </Card>
+        <Link to="/" className="inline-block text-blue-600 hover:text-blue-700 font-medium">
+          العودة إلى لوحة التحكم
+        </Link>
       </div>
     </div>
   );

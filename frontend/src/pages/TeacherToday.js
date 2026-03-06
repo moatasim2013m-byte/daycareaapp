@@ -66,134 +66,81 @@ const getChildren = () => {
   return [1, 2, 3, 4, 5].map((n) => ({ id: String(n), name: `الطفل ${n}` }));
 };
 
+const STATUS_LABELS = {
+  PRESENT: 'حاضر',
+  ABSENT: 'غائب',
+  LATE: 'متأخر',
+  PICKED_UP: 'انصرف',
+};
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+const readObjectFromStorage = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+};
+
+const readListFromStorage = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+};
+
 const TeacherToday = () => {
   const selectedDate = today();
 
   const attendanceSummary = useMemo(() => {
-    const data = readObject(`attendance:1:${selectedDate}`);
-    const values = Object.values(data);
-
-    return {
-      total: values.length,
-      present: values.filter((v) => v?.status === 'PRESENT').length,
-      absent: values.filter((v) => v?.status === 'ABSENT').length,
-      late: values.filter((v) => v?.status === 'LATE').length,
-      pickedUp: values.filter((v) => v?.status === 'PICKED_UP').length,
-    };
+    const attendance = readObjectFromStorage(`attendance:1:${selectedDate}`);
+    return Object.values(attendance)
+      .map((item) => STATUS_LABELS[item?.status] || null)
+      .filter(Boolean);
   }, [selectedDate]);
 
-  const latestActivities = useMemo(() => {
-    const roomKey = `activityFeedRoom:${selectedDate}`;
-    const fallbackKey = `activityFeed:${selectedDate}`;
-
-    const roomActivities = readArray(roomKey);
-    const source = roomActivities.length > 0 ? roomActivities : readArray(fallbackKey);
-
-    return source
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 3);
+  const activitySummary = useMemo(() => {
+    const activities = readListFromStorage(`activityFeed:${selectedDate}`);
+    return activities
+      .map((activity) => activity?.text || activity?.content || activity?.title || '')
+      .filter(Boolean);
   }, [selectedDate]);
-
-  const children = useMemo(() => getChildren(), []);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">مهام اليوم</h1>
-            <p className="text-gray-600 mt-1">ملخص سريع وإجراءات يومية للمعلمات</p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/">العودة إلى لوحة التحكم</Link>
-          </Button>
-        </div>
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900">المعلمات — مهام اليوم</h1>
+        <p className="text-gray-600">ملخص سريع لحضور اليوم ونشاطات الغرفة.</p>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>ملخص الحضور (اليوم)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {attendanceSummary.total === 0 ? (
-              <p className="text-gray-500">لا توجد سجلات حضور لهذا اليوم</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-sm text-gray-600">حاضر</p>
-                  <p className="text-xl font-bold text-gray-900">{attendanceSummary.present}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-sm text-gray-600">غائب</p>
-                  <p className="text-xl font-bold text-gray-900">{attendanceSummary.absent}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-sm text-gray-600">متأخر</p>
-                  <p className="text-xl font-bold text-gray-900">{attendanceSummary.late}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-sm text-gray-600">انصرف</p>
-                  <p className="text-xl font-bold text-gray-900">{attendanceSummary.pickedUp}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+          <h2 className="font-semibold text-gray-900">الحضور</h2>
+          {attendanceSummary.length > 0 ? (
+            attendanceSummary.map((status, index) => <p key={`${status}-${index}`}>{status}</p>)
+          ) : (
+            <p className="text-gray-500">لا توجد بيانات حضور لليوم.</p>
+          )}
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>إجراءات سريعة</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button asChild variant="outline"><Link to="/teacher/attendance">الحضور</Link></Button>
-            <Button asChild variant="outline"><Link to="/teacher/activity/new">إضافة نشاط</Link></Button>
-            <Button asChild variant="outline"><Link to="/teacher/messages">الرسائل</Link></Button>
-            <Button asChild variant="outline"><Link to="/teacher/child/1/log">سجل الطفل 1</Link></Button>
-            <Button asChild variant="outline"><Link to="/teacher/child/2/log">سجل الطفل 2</Link></Button>
-          </CardContent>
-        </Card>
+        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+          <h2 className="font-semibold text-gray-900">النشاطات</h2>
+          {activitySummary.length > 0 ? (
+            activitySummary.map((text, index) => <p key={`${text}-${index}`}>{text}</p>)
+          ) : (
+            <p className="text-gray-500">لا توجد نشاطات مسجلة لليوم.</p>
+          )}
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>ملخص أنشطة اليوم</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {latestActivities.length === 0 ? (
-              <p className="text-gray-500">لا توجد أنشطة اليوم</p>
-            ) : (
-              <div className="space-y-2">
-                {latestActivities.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-200 p-3 bg-white">
-                    <p className="text-sm font-medium text-gray-900">{item.caption || 'بدون وصف'}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {item.createdAt
-                        ? new Date(item.createdAt).toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' })
-                        : '--:--'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>قائمة الأطفال السريعة</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {children.map((child) => (
-              <div key={child.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3 bg-white">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900">{child.name}</p>
-                  <Badge variant="secondary">#{child.id}</Badge>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link to={`/teacher/child/${child.id}/log`}>فتح السجل</Link>
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <Link to="/" className="inline-block text-blue-600 hover:text-blue-700 font-medium">
+          العودة إلى لوحة التحكم
+        </Link>
       </div>
     </div>
   );

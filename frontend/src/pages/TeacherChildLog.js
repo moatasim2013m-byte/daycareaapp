@@ -65,9 +65,7 @@ const getSummaryFromPayload = (log) => {
 };
 
 const TeacherChildLog = () => {
-  const { childId: routeChildId } = useParams();
-  const childId = String(routeChildId || '1');
-
+  const { childId } = useParams();
   const [selectedDate, setSelectedDate] = useState(today());
   const [activeType, setActiveType] = useState('MEAL');
   const [logs, setLogs] = useState([]);

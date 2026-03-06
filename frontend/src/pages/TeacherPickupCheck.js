@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const readArray = (key) => {
+const readPickups = (key) => {
   try {
     const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -21,11 +21,7 @@ const TeacherPickupCheck = () => {
   const [childId, setChildId] = useState('1');
   const [search, setSearch] = useState('');
   const [pickups, setPickups] = useState([]);
-  const [verificationLog, setVerificationLog] = useState([]);
-
-  const dateKey = today();
-  const pickupsKey = useMemo(() => `authorizedPickups:${childId}`, [childId]);
-  const checksKey = useMemo(() => `pickupChecks:${childId}:${dateKey}`, [childId, dateKey]);
+  const [verifiedLog, setVerifiedLog] = useState([]);
 
   useEffect(() => {
     setPickups(readArray(pickupsKey));
@@ -62,6 +58,24 @@ const TeacherPickupCheck = () => {
     const nextLog = [event, ...verificationLog];
     localStorage.setItem(checksKey, JSON.stringify(nextLog));
     setVerificationLog(nextLog);
+  };
+
+  const todayKey = useMemo(() => `pickupChecks:${today()}`, []);
+
+  useEffect(() => {
+    setVerifiedLog(readPickups(todayKey));
+  }, [todayKey]);
+
+  const handleVerify = (pickup) => {
+    const entry = {
+      id: `${pickup.id}:${Date.now()}`,
+      childId,
+      name: pickup.name,
+      createdAt: new Date().toISOString(),
+    };
+    const nextLog = [entry, ...verifiedLog];
+    setVerifiedLog(nextLog);
+    localStorage.setItem(todayKey, JSON.stringify(nextLog));
   };
 
   return (
@@ -111,21 +125,13 @@ const TeacherPickupCheck = () => {
               <div className="space-y-3">
                 {filteredPickups.map((item) => (
                   <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-gray-900">الاسم: {item.name}</p>
-                        <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
-                        <p className="text-sm text-gray-700">رقم الهاتف: {item.phone}</p>
-                        {item.createdAt && (
-                          <p className="text-xs text-gray-500">
-                            أضيف في: {new Date(item.createdAt).toLocaleTimeString('ar-JO', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        )}
-                      </div>
-                      <Button type="button" onClick={() => handleVerify(item)}>تم التحقق</Button>
+                    <p className="font-semibold text-gray-900">{item.name}</p>
+                    <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
+                    <p className="text-sm text-gray-700">الهاتف: {item.phone}</p>
+                    <div className="mt-3">
+                      <Button type="button" onClick={() => handleVerify(item)}>
+                        تم التحقق
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -136,25 +142,17 @@ const TeacherPickupCheck = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>سجل التحقق اليوم</CardTitle>
+            <CardTitle>سجل اليوم</CardTitle>
           </CardHeader>
           <CardContent>
-            {verificationLog.length === 0 ? (
+            {verifiedLog.length === 0 ? (
               <p className="text-gray-500">لا توجد عمليات تحقق اليوم</p>
             ) : (
               <div className="space-y-2">
-                {verificationLog.map((log) => (
-                  <div key={log.id} className="rounded-lg border border-gray-200 bg-white p-3">
-                    <p className="font-medium text-gray-900">{log.personName}</p>
-                    <p className="text-xs text-gray-500">
-                      {log.verifiedAt
-                        ? new Date(log.verifiedAt).toLocaleTimeString('ar-JO', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '--:--'}
-                    </p>
-                  </div>
+                {verifiedLog.map((item) => (
+                  <p key={item.id} className="text-sm text-gray-700">
+                    {item.name}
+                  </p>
                 ))}
               </div>
             )}

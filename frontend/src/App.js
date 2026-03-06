@@ -102,20 +102,21 @@ function App() {
             }
           />
 
-          <Route
-            path="/billing"
-            element={
-              <ProtectedRoute>
-                <BillingAccountingDemo />
-              </ProtectedRoute>
-            }
-          />
 
           <Route
             path="/guides/parent-communication-step-4"
             element={
               <ProtectedRoute>
                 <ParentCommunicationGuide />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingAccountingDemo />
               </ProtectedRoute>
             }
           />
@@ -209,6 +210,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

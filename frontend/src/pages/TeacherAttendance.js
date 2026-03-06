@@ -73,7 +73,6 @@ const readAttendance = (key) => {
     return {};
   }
 };
-
 const TeacherAttendance = () => {
   const [roomId, setRoomId] = useState('1');
   const [selectedDate, setSelectedDate] = useState(today());
