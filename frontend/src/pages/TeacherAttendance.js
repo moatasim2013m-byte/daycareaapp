@@ -74,6 +74,12 @@ const readAttendance = (key) => {
   }
 };
 
+const STATUS_LABELS = {
+  PRESENT: 'حاضر',
+  ABSENT: 'غائب',
+  LATE: 'متأخر',
+};
+
 const TeacherAttendance = () => {
   const [roomId, setRoomId] = useState('1');
   const [selectedDate, setSelectedDate] = useState(today());
