@@ -1,37 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
-
-const readThread = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    return [...parsed].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  } catch {
-    return [];
-  }
-};
-
-const resolveChildName = (targetChildId) => {
-  const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+const ParentMessages = () => {
+  const [childId, setChildId] = useState('1');
+  useEffect(() => {
+    const context = resolveCachedChildContext();
+    if (context?.childId) {
+      setChildId(context.childId);
+    }
+  }, []);
 
   for (const key of candidateKeys) {
     const list = parseCachedList(localStorage.getItem(key));

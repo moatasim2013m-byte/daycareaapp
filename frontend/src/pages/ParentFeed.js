@@ -5,21 +5,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
-
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
 
 const readFeedByKey = (key) => {
   if (!key) return [];
@@ -45,25 +33,13 @@ const ParentFeed = () => {
   const [feed, setFeed] = useState([]);
 
   useEffect(() => {
-    const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+    const context = resolveCachedChildContext();
+    if (!context) return;
 
-    for (const key of candidateKeys) {
-      const children = parseCachedList(localStorage.getItem(key));
-      if (children.length > 0) {
-        const child = children[0];
-        const cachedChildId = child?.child_id ?? child?.childId ?? child?.id;
-        const cachedRoomId = child?.room_id ?? child?.roomId ?? child?.classroom_id ?? child?.zone_id;
+    setChildId(context.childId);
 
-        if (cachedChildId !== undefined && cachedChildId !== null) {
-          setChildId(String(cachedChildId));
-        }
-
-        if (cachedRoomId !== undefined && cachedRoomId !== null) {
-          setRoomId(String(cachedRoomId));
-        }
-
-        break;
-      }
+    if (context.roomId) {
+      setRoomId(context.roomId);
     }
   }, []);
 
