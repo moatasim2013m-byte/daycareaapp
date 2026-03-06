@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -19,14 +19,46 @@ const readPickups = (key) => {
 
 const TeacherPickupCheck = () => {
   const [childId, setChildId] = useState('1');
+  const [search, setSearch] = useState('');
   const [pickups, setPickups] = useState([]);
   const [verifiedLog, setVerifiedLog] = useState([]);
 
-  const storageKey = useMemo(() => `authorizedPickups:${childId}`, [childId]);
+  useEffect(() => {
+    setPickups(readArray(pickupsKey));
+  }, [pickupsKey]);
 
   useEffect(() => {
-    setPickups(readPickups(storageKey));
-  }, [storageKey]);
+    const entries = readArray(checksKey).sort(
+      (a, b) => new Date(b.verifiedAt).getTime() - new Date(a.verifiedAt).getTime()
+    );
+    setVerificationLog(entries);
+  }, [checksKey]);
+
+  const filteredPickups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return pickups;
+
+    return pickups.filter((item) => {
+      const name = String(item?.name || '').toLowerCase();
+      const phone = String(item?.phone || '').toLowerCase();
+      return name.includes(q) || phone.includes(q);
+    });
+  }, [pickups, search]);
+
+  const handleVerify = (person) => {
+    const event = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      childId: String(childId),
+      personName: person?.name || '',
+      relation: person?.relation || '',
+      phone: person?.phone || '',
+      verifiedAt: new Date().toISOString(),
+    };
+
+    const nextLog = [event, ...verificationLog];
+    localStorage.setItem(checksKey, JSON.stringify(nextLog));
+    setVerificationLog(nextLog);
+  };
 
   const todayKey = useMemo(() => `pickupChecks:${today()}`, []);
 
@@ -48,11 +80,11 @@ const TeacherPickupCheck = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">التحقق من الاستلام</h1>
-            <p className="text-gray-600 mt-1">تحقق سريع من الأشخاص المخولين لاستلام الطفل</p>
+            <p className="text-gray-600 mt-1">التحقق من الأشخاص المخولين لاستلام الطفل</p>
           </div>
           <Button asChild variant="outline">
             <Link to="/">العودة إلى لوحة التحكم</Link>
@@ -60,14 +92,25 @@ const TeacherPickupCheck = () => {
         </div>
 
         <Card>
-          <CardContent className="pt-6 max-w-xs space-y-2">
-            <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
-            <Input
-              id="pickup-check-child-id"
-              value={childId}
-              onChange={(e) => setChildId(e.target.value || '1')}
-              placeholder="1"
-            />
+          <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
+              <Input
+                id="pickup-check-child-id"
+                value={childId}
+                onChange={(e) => setChildId(e.target.value || '1')}
+                placeholder="1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pickup-check-search">بحث بالاسم أو الهاتف</Label>
+              <Input
+                id="pickup-check-search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ابحث هنا"
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -76,11 +119,11 @@ const TeacherPickupCheck = () => {
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
           <CardContent>
-            {pickups.length === 0 ? (
+            {filteredPickups.length === 0 ? (
               <p className="text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</p>
             ) : (
               <div className="space-y-3">
-                {pickups.map((item) => (
+                {filteredPickups.map((item) => (
                   <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
                     <p className="font-semibold text-gray-900">{item.name}</p>
                     <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
