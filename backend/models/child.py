@@ -7,12 +7,18 @@ import uuid
 class ChildCreate(BaseModel):
     full_name: str
     birth_date: date
+    gender: Optional[str] = None
+    allergies: Optional[str] = None
+    notes: Optional[str] = None
     medical_notes: Optional[str] = None
 
 
 class ChildUpdate(BaseModel):
     full_name: Optional[str] = None
     birth_date: Optional[date] = None
+    gender: Optional[str] = None
+    allergies: Optional[str] = None
+    notes: Optional[str] = None
     medical_notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -24,6 +30,9 @@ class Child(BaseModel):
     guardian_id: str  # parent user_id
     full_name: str
     birth_date: date
+    gender: Optional[str] = None
+    allergies: Optional[str] = None
+    notes: Optional[str] = None
     medical_notes: Optional[str] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -37,6 +46,9 @@ class ChildResponse(BaseModel):
     guardian_id: str
     full_name: str
     birth_date: date
+    gender: Optional[str] = None
+    allergies: Optional[str] = None
+    notes: Optional[str] = None
     medical_notes: Optional[str] = None
     is_active: bool
     created_at: datetime

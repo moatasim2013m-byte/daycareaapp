@@ -29,6 +29,18 @@ def validate_child_age(dob: date) -> bool:
     return age_months <= 48  # 4 years = 48 months
 
 
+def normalize_guardian_contacts(guardian: GuardianInfo) -> GuardianInfo:
+    """Keep guardian phone/mobile fields in sync for intake compatibility."""
+    data = guardian.model_dump()
+    if not data.get("mobile") and data.get("phone"):
+        data["mobile"] = data["phone"]
+    if not data.get("phone") and data.get("mobile"):
+        data["phone"] = data["mobile"]
+    if not data.get("whatsapp") and data.get("mobile"):
+        data["whatsapp"] = data["mobile"]
+    return GuardianInfo(**data)
+
+
 @router.get("", response_model=List[CustomerResponse])
 async def list_customers(
     branch_id: Optional[str] = None,
@@ -125,12 +137,16 @@ async def register_customer(
                 detail="لا يمكنك التسجيل في فرع آخر"
             )
     
-    # Create customer
+    # Normalize guardian contacts and create customer
+    guardian = normalize_guardian_contacts(customer_data.guardian)
     customer = Customer(
         card_number=customer_data.card_number,
         child_name=customer_data.child_name,
         child_dob=customer_data.child_dob,
-        guardian=customer_data.guardian,
+        child_gender=customer_data.child_gender,
+        child_allergies=customer_data.child_allergies,
+        child_notes=customer_data.child_notes,
+        guardian=guardian,
         branch_id=customer_data.branch_id,
         notes=customer_data.notes
     )
@@ -267,8 +283,14 @@ async def update_customer(
         update_data["child_name"] = updates.child_name
     if updates.child_dob:
         update_data["child_dob"] = updates.child_dob.isoformat()
+    if updates.child_gender is not None:
+        update_data["child_gender"] = updates.child_gender
+    if updates.child_allergies is not None:
+        update_data["child_allergies"] = updates.child_allergies
+    if updates.child_notes is not None:
+        update_data["child_notes"] = updates.child_notes
     if updates.guardian:
-        update_data["guardian"] = updates.guardian.model_dump()
+        update_data["guardian"] = normalize_guardian_contacts(updates.guardian).model_dump()
     if updates.notes is not None:
         update_data["notes"] = updates.notes
     if updates.status:

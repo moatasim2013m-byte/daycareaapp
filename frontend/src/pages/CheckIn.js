@@ -49,7 +49,12 @@ const CheckIn = () => {
     child_name: '',
     child_dob: '',
     guardian_name: '',
-    guardian_phone: ''
+    guardian_mobile: '',
+    guardian_whatsapp: '',
+    guardian_email: '',
+    child_gender: '',
+    child_allergies: '',
+    child_notes: ''
   });
 
   const cardInputRef = useRef(null);
@@ -179,7 +184,7 @@ const CheckIn = () => {
 
   // Handle registration
   const handleRegister = async () => {
-    if (!registerForm.child_name || !registerForm.child_dob || !registerForm.guardian_name) {
+    if (!registerForm.child_name || !registerForm.child_dob || !registerForm.guardian_name || !registerForm.guardian_mobile) {
       alert('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
@@ -190,15 +195,21 @@ const CheckIn = () => {
         card_number: cardNumber.trim(),
         child_name: registerForm.child_name,
         child_dob: registerForm.child_dob,
+        child_gender: registerForm.child_gender || null,
+        child_allergies: registerForm.child_allergies || null,
+        child_notes: registerForm.child_notes || null,
         guardian: {
           name: registerForm.guardian_name,
-          phone: registerForm.guardian_phone || null
+          mobile: registerForm.guardian_mobile || null,
+          phone: registerForm.guardian_mobile || null,
+          whatsapp: registerForm.guardian_whatsapp || null,
+          email: registerForm.guardian_email || null
         },
         branch_id: selectedBranch.branch_id
       });
       
       setShowRegister(false);
-      setRegisterForm({ child_name: '', child_dob: '', guardian_name: '', guardian_phone: '' });
+      setRegisterForm({ child_name: '', child_dob: '', guardian_name: '', guardian_mobile: '', guardian_whatsapp: '', guardian_email: '', child_gender: '', child_allergies: '', child_notes: '' });
       
       // Show waiver acceptance
       setScanResult({
@@ -644,15 +655,74 @@ const CheckIn = () => {
               </div>
               
               <div>
-                <Label>رقم الهاتف (اختياري)</Label>
+                <Label>جنس الطفل (اختياري)</Label>
+                <Input
+                  value={registerForm.child_gender}
+                  onChange={(e) => setRegisterForm({...registerForm, child_gender: e.target.value})}
+                  placeholder="ذكر / أنثى"
+                  className="mt-1 rounded-input"
+                  data-testid="child-gender-input"
+                />
+              </div>
+
+              <div>
+                <Label>رقم الجوال *</Label>
                 <Input
                   type="tel"
-                  value={registerForm.guardian_phone}
-                  onChange={(e) => setRegisterForm({...registerForm, guardian_phone: e.target.value})}
+                  value={registerForm.guardian_mobile}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_mobile: e.target.value})}
                   placeholder="+962..."
                   className="mt-1 rounded-input"
                   dir="ltr"
-                  data-testid="guardian-phone-input"
+                  data-testid="guardian-mobile-input"
+                />
+              </div>
+
+              <div>
+                <Label>واتساب (اختياري)</Label>
+                <Input
+                  type="tel"
+                  value={registerForm.guardian_whatsapp}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_whatsapp: e.target.value})}
+                  placeholder="+962..."
+                  className="mt-1 rounded-input"
+                  dir="ltr"
+                  data-testid="guardian-whatsapp-input"
+                />
+              </div>
+
+              <div>
+                <Label>البريد الإلكتروني (اختياري)</Label>
+                <Input
+                  type="email"
+                  value={registerForm.guardian_email}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_email: e.target.value})}
+                  placeholder="example@email.com"
+                  className="mt-1 rounded-input"
+                  dir="ltr"
+                  data-testid="guardian-email-input"
+                />
+              </div>
+
+              <div>
+                <Label>الحساسية (اختياري)</Label>
+                <Input
+                  value={registerForm.child_allergies}
+                  onChange={(e) => setRegisterForm({...registerForm, child_allergies: e.target.value})}
+                  placeholder="مثال: حساسية من المكسرات"
+                  className="mt-1 rounded-input"
+                  data-testid="child-allergies-input"
+                />
+              </div>
+
+              <div>
+                <Label>ملاحظات (اختياري)</Label>
+                <Input
+                  value={registerForm.child_notes}
+                  onChange={(e) => setRegisterForm({...registerForm, child_notes: e.target.value})}
+                  placeholder="ملاحظات إضافية عن الطفل"
+                  className="mt-1 rounded-input"
+                  data-testid="child-notes-input"
                 />
               </div>
             </div>
