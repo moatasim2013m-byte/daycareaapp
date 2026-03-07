@@ -186,6 +186,7 @@ If you're using Cloud Run (or Codespaces), open the generated HTTPS frontend URL
 ## Onboarding Guides
 
 - Step 6/7: [Set Up Forms & Generate Reports](docs/onboarding/step-6-forms-and-reports.md)
+- Cloud Run login troubleshooting (admin seed): [docs/login-admin-seed-troubleshooting.md](docs/login-admin-seed-troubleshooting.md)
 
 ---
 
