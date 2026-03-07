@@ -80,16 +80,19 @@ const TeacherAttendance = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">حضور الأطفال</h1>
-          <Button asChild variant="outline">
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-5xl">
+        <div className="peek-header peek-header--teacher flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">حضور الأطفال</h1>
+            <p className="text-sm text-gray-600 mt-1">واجهة سريعة مع أزرار لمس كبيرة لحالة كل طفل.</p>
+          </div>
+          <Button asChild variant="outline" className="peek-action-teacher">
             <Link to="/">العودة إلى لوحة التحكم</Link>
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card">
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="attendance-date">التاريخ</Label>
@@ -112,7 +115,7 @@ const TeacherAttendance = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>قائمة الأطفال</CardTitle>
           </CardHeader>
@@ -121,7 +124,7 @@ const TeacherAttendance = () => {
               const current = attendance[child.childId];
 
               return (
-                <div key={child.childId} className="rounded-lg border border-gray-200 bg-white p-3">
+                <div key={child.childId} className="rounded-2xl border border-orange-100 bg-white p-3 shadow-sm">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
                       <p className="font-semibold text-gray-900">{child.name}</p>
@@ -145,6 +148,7 @@ const TeacherAttendance = () => {
                           key={option.value}
                           type="button"
                           size="sm"
+                          className="peek-action-teacher"
                           variant={current?.status === option.value ? 'default' : 'outline'}
                           onClick={() => setChildStatus(child.childId, option.value)}
                         >

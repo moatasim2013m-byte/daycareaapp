@@ -61,30 +61,41 @@ const TeacherToday = () => {
   }, [roomId, selectedDate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-3xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">المعلمات — مهام اليوم</h1>
-        <p className="text-gray-600">ملخص سريع لحضور اليوم ونشاطات الغرفة.</p>
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-3xl">
+        <div className="peek-header peek-header--teacher">
+          <h1 className="text-2xl font-bold text-gray-900">المعلمات — مهام اليوم</h1>
+          <p className="text-gray-600 mt-1">لوحة سريعة للغرفة {roomId} مع مسارات تنفيذ يومية.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="peek-action-teacher inline-flex items-center bg-orange-500 px-4 text-white" to="/teacher/attendance">تسجيل الحضور</Link>
+            <Link className="peek-action-teacher inline-flex items-center bg-sky-500 px-4 text-white" to="/teacher/activity/new">إضافة نشاط</Link>
+            <Link className="peek-action-teacher inline-flex items-center bg-emerald-500 px-4 text-white" to="/teacher/messages">مراسلة أولياء الأمور</Link>
+          </div>
+        </div>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+        <section className="peek-card p-4 space-y-2">
           <h2 className="font-semibold text-gray-900">الحضور</h2>
           {attendanceSummary.length > 0 ? (
-            attendanceSummary.map((status, index) => <p key={`${status}-${index}`}>{status}</p>)
+            attendanceSummary.map((status, index) => (
+              <p key={`${status}-${index}`} className="rounded-xl bg-orange-50 px-3 py-2 text-sm">{status}</p>
+            ))
           ) : (
-            <p className="text-gray-500">لا توجد بيانات حضور لليوم.</p>
+            <div className="peek-empty text-gray-500">لا توجد بيانات حضور لليوم.</div>
           )}
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+        <section className="peek-card p-4 space-y-2">
           <h2 className="font-semibold text-gray-900">النشاطات</h2>
           {activitySummary.length > 0 ? (
-            activitySummary.map((text, index) => <p key={`${text}-${index}`}>{text}</p>)
+            activitySummary.map((text, index) => (
+              <p key={`${text}-${index}`} className="rounded-xl bg-sky-50 px-3 py-2 text-sm">{text}</p>
+            ))
           ) : (
-            <p className="text-gray-500">لا توجد نشاطات مسجلة لليوم.</p>
+            <div className="peek-empty text-gray-500">لا توجد نشاطات مسجلة لليوم.</div>
           )}
         </section>
 
-        <Link to="/" className="inline-block text-blue-600 hover:text-blue-700 font-medium">
+        <Link to="/" className="inline-block text-blue-700 hover:text-blue-800 font-medium">
           العودة إلى لوحة التحكم
         </Link>
       </div>

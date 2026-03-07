@@ -88,19 +88,19 @@ const ParentFeed = () => {
   }, [mergedFeed]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-parent" dir="rtl">
+      <div className="peek-shell max-w-4xl">
+        <div className="peek-header peek-header--parent flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">ولي الأمر — الخلاصة اليومية</h1>
-            <p className="text-gray-600 mt-1">تحديثات اليوم للغرفة والطفل</p>
+            <h1 className="text-2xl font-bold text-gray-900">قصة يوم طفلك</h1>
+            <p className="text-gray-600 mt-1">تحديثات دافئة من يوم الطفل داخل الحضانة</p>
           </div>
           <Button asChild variant="outline">
             <Link to="/">العودة إلى لوحة التحكم</Link>
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>سياق الطفل النشط</CardTitle>
           </CardHeader>
@@ -130,17 +130,17 @@ const ParentFeed = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>الخلاصة</CardTitle>
           </CardHeader>
           <CardContent>
             {feed.length === 0 ? (
-              <p className="text-gray-500">لا توجد منشورات حالياً لهذا الطفل/اليوم.</p>
+              <div className="peek-empty text-gray-500">🌼 لا توجد منشورات حالياً لهذا الطفل/اليوم.</div>
             ) : (
               <div className="space-y-3">
                 {feed.map((entry) => (
-                  <div key={`${entry.sourceKey}-${entry.id}`} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div key={`${entry.sourceKey}-${entry.id}`} className="peek-feed-item p-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <Badge variant={entry.feedType === 'CHILD' ? 'default' : 'secondary'}>

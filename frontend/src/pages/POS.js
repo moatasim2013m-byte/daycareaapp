@@ -182,13 +182,13 @@ const POS = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="peek-page peek-role-admin" dir="rtl">
       {/* Header with green accent (POS module color) */}
-      <div className="bg-white border-b-4 border-playful-green shadow-soft">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="peek-header peek-header--admin mb-4">
+        <div className="peek-shell max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-card bg-playful-green/10 flex items-center justify-center">
+              <div className="w-12 h-12 peek-card bg-playful-green/10 flex items-center justify-center">
                 <Receipt className="w-6 h-6 text-playful-green" />
               </div>
               <div>
@@ -221,7 +221,7 @@ const POS = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="peek-shell max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products Grid */}
           <div className="lg:col-span-2 space-y-6">
@@ -258,7 +258,7 @@ const POS = () => {
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <Card className="rounded-card">
+              <Card className="peek-card">
                 <CardContent className="p-12 text-center">
                   <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">لا توجد منتجات</h3>
@@ -275,7 +275,7 @@ const POS = () => {
                   return (
                     <Card
                       key={product.product_id}
-                      className="rounded-card border-2 border-gray-200 hover:border-playful-green hover:shadow-card transition-all duration-200 cursor-pointer group"
+                      className="peek-card border-2 border-gray-200 hover:border-playful-green hover:shadow-card transition-all duration-200 cursor-pointer group"
                       onClick={() => addToCart(product)}
                       data-testid={`product-${product.sku}`}
                     >
@@ -313,7 +313,7 @@ const POS = () => {
 
           {/* Cart */}
           <div className="lg:col-span-1">
-            <Card className="rounded-card border-2 border-gray-200 sticky top-4">
+            <Card className="peek-card border-2 border-gray-200 sticky top-4">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

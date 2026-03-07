@@ -81,16 +81,16 @@ const TeacherPickupCheck = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-5xl">
+        <div className="peek-header peek-header--teacher flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold text-gray-900">التحقق من الاستلام</h1>
           <Button asChild variant="outline">
             <Link to="/">العودة</Link>
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card">
           <CardContent className="grid grid-cols-1 gap-4 pt-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
@@ -113,19 +113,19 @@ const TeacherPickupCheck = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredPickups.length === 0 ? (
-              <p className="text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</p>
+              <div className="peek-empty text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</div>
             ) : (
               <div className="space-y-3">
                 {filteredPickups.map((item, index) => (
                   <div
                     key={item.id || `${item.name || 'person'}-${index}`}
-                    className="rounded-lg border border-gray-200 bg-white p-3"
+                    className="rounded-2xl border border-orange-100 bg-white p-3 shadow-sm"
                   >
                     <p className="text-sm text-gray-700">الاسم: {item.name || '-'}</p>
                     <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
@@ -136,7 +136,7 @@ const TeacherPickupCheck = () => {
                       </p>
                     ) : null}
                     <div className="mt-3">
-                      <Button type="button" onClick={() => handleVerify(item)}>
+                      <Button type="button" onClick={() => handleVerify(item)} className="peek-action-teacher bg-orange-500 text-white hover:bg-orange-600">
                         تم التحقق
                       </Button>
                     </div>
@@ -147,13 +147,13 @@ const TeacherPickupCheck = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>سجل تحقق اليوم</CardTitle>
           </CardHeader>
           <CardContent>
             {verificationLog.length === 0 ? (
-              <p className="text-gray-500">لا توجد عمليات تحقق اليوم</p>
+              <div className="peek-empty text-gray-500">لا توجد عمليات تحقق اليوم</div>
             ) : (
               <div className="space-y-2">
                 {verificationLog.map((item) => (
