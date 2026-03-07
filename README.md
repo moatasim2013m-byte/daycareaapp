@@ -69,6 +69,15 @@ gcloud run deploy daycareaapp-frontend \
 
    Frontend source deploy uses buildpacks with `gcp-build` (`npm run build`) and starts on Cloud Run using `serve -s build -l $PORT` on port `8080`.
 
+   If you run a manual Docker build for the frontend, ensure `-f` points to the Dockerfile file path (not the `frontend` directory), for example:
+
+```bash
+docker build \
+  -t <frontend-image> \
+  -f frontend/Dockerfile \
+  .
+```
+
 5. Verify:
 
 - `GET https://<backend-url>/api/health`
