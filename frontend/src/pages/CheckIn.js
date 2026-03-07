@@ -294,7 +294,7 @@ const CheckIn = () => {
           {/* Card Scan Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Scan Card */}
-            <Card className="peek-card border-2 border-gray-200">
+            <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-playful-blue" />
@@ -476,7 +476,7 @@ const CheckIn = () => {
 
           {/* Active Sessions */}
           <div className="lg:col-span-1">
-            <Card className="peek-card border-2 border-gray-200">
+            <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

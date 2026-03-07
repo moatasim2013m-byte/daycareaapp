@@ -1,19 +1,22 @@
 :root {
     --peek-bg-base: #f8fafc;
-    --peek-bg-admin: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%);
-    --peek-bg-teacher: linear-gradient(180deg, #fffef5 0%, #f0f9ff 100%);
-    --peek-bg-parent: linear-gradient(180deg, #fff9f2 0%, #fff4ef 40%, #f0f9ff 100%);
+    --peek-bg-admin: linear-gradient(180deg, #f8fafc 0%, #edf3ff 55%, #f8fafc 100%);
+    --peek-bg-teacher: linear-gradient(180deg, #fffef6 0%, #f3fbff 55%, #fef7ed 100%);
+    --peek-bg-parent: linear-gradient(180deg, #fff8f1 0%, #fff9de 45%, #f0f9ff 100%);
+
     --peek-card-radius: 1rem;
     --peek-card-radius-lg: 1.25rem;
-    --peek-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
-    --peek-shadow-card: 0 6px 20px rgba(15, 23, 42, 0.06);
-    --peek-primary: #0ea5e9;
-    --peek-secondary: #f97316;
+    --peek-shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.08);
+    --peek-shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+
     --peek-yellow: #facc15;
     --peek-orange: #f97316;
     --peek-red: #ef4444;
     --peek-green: #22c55e;
     --peek-sky: #0ea5e9;
+
+    --peek-section-gap: 1rem;
+    --peek-btn-radius: 0.9rem;
 }
 
 .peek-page {
@@ -30,29 +33,30 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--peek-section-gap);
 }
 
 .peek-header {
     border-radius: var(--peek-card-radius-lg);
-    background: #ffffff;
     border: 1px solid #e2e8f0;
     box-shadow: var(--peek-shadow-card);
     padding: 1rem;
+    background: #ffffff;
 }
 
 .peek-header--admin {
     border-top: 4px solid var(--peek-sky);
+    background: linear-gradient(120deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .peek-header--teacher {
     border-top: 4px solid var(--peek-orange);
-    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 80%);
 }
 
 .peek-header--parent {
     border-top: 4px solid var(--peek-yellow);
-    background: linear-gradient(130deg, #fff7d6 0%, #fff4ef 45%, #ffffff 100%);
+    background: linear-gradient(130deg, #fff9d4 0%, #fff5ef 48%, #ffffff 100%);
 }
 
 .peek-card {
@@ -71,14 +75,36 @@
 
 .peek-kpi-value { font-size: 1.9rem; font-weight: 800; line-height: 1.2; }
 
+.peek-btn {
+    border-radius: var(--peek-btn-radius);
+    font-weight: 700;
+    min-height: 2.75rem;
+}
+
+.peek-action-teacher {
+    min-height: 3rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
 .peek-accent-admin { color: #1d4ed8; }
 .peek-accent-teacher { color: #c2410c; }
 .peek-accent-parent { color: #be185d; }
 
-.peek-action-teacher {
-    min-height: 2.9rem;
-    border-radius: 0.9rem;
-    font-weight: 700;
+.peek-role-panel-admin {
+    border-inline-start: 4px solid var(--peek-sky);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.peek-role-panel-teacher {
+    border-inline-start: 4px solid var(--peek-orange);
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf4 100%);
+}
+
+.peek-role-panel-parent {
+    border-inline-start: 4px solid var(--peek-yellow);
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf1 100%);
 }
 
 .peek-empty {
@@ -96,7 +122,17 @@
     box-shadow: 0 2px 10px rgba(251, 146, 60, 0.15);
 }
 
+.peek-table-head {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.peek-table-row:hover {
+    background: #f8fbff;
+}
+
 @media (max-width: 768px) {
     .peek-page { padding: 0.75rem; }
     .peek-header { padding: 0.85rem; }
+    .peek-shell { gap: 0.8rem; }
 }

@@ -99,7 +99,7 @@ const TeacherNewActivity = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>نموذج النشاط</CardTitle>
           </CardHeader>
@@ -160,7 +160,7 @@ const TeacherNewActivity = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>معاينة المنشورات ({currentDate})</CardTitle>
           </CardHeader>

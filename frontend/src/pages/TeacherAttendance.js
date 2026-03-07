@@ -92,7 +92,7 @@ const TeacherAttendance = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="attendance-date">التاريخ</Label>
@@ -115,7 +115,7 @@ const TeacherAttendance = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>قائمة الأطفال</CardTitle>
           </CardHeader>

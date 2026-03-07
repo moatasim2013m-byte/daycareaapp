@@ -90,7 +90,7 @@ const TeacherPickupCheck = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardContent className="grid grid-cols-1 gap-4 pt-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
@@ -113,7 +113,7 @@ const TeacherPickupCheck = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
@@ -147,7 +147,7 @@ const TeacherPickupCheck = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>سجل تحقق اليوم</CardTitle>
           </CardHeader>

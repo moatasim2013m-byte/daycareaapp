@@ -100,7 +100,7 @@ const ParentFeed = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>سياق الطفل النشط</CardTitle>
           </CardHeader>
@@ -130,7 +130,7 @@ const ParentFeed = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>الخلاصة</CardTitle>
           </CardHeader>

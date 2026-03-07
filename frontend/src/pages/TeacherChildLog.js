@@ -195,7 +195,7 @@ const TeacherChildLog = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardContent className="pt-6 max-w-xs space-y-2">
             <Label htmlFor="log-date">التاريخ</Label>
             <Input
@@ -207,7 +207,7 @@ const TeacherChildLog = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>إضافة حدث</CardTitle>
           </CardHeader>
@@ -338,7 +338,7 @@ const TeacherChildLog = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>السجل الزمني</CardTitle>
           </CardHeader>

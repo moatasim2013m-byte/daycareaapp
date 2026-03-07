@@ -64,16 +64,16 @@ const TeacherToday = () => {
     <div className="peek-page peek-role-teacher" dir="rtl">
       <div className="peek-shell max-w-3xl">
         <div className="peek-header peek-header--teacher">
-          <h1 className="text-2xl font-bold text-gray-900">المعلمات — مهام اليوم</h1>
-          <p className="text-gray-600 mt-1">لوحة سريعة للغرفة {roomId} مع مسارات تنفيذ يومية.</p>
+          <h1 className="text-2xl font-bold text-gray-900">المعلمات — مركز مهام اليوم</h1>
+          <p className="text-gray-600 mt-1">لوحة تحكم تنفيذية سريعة للغرفة {roomId} مع أولويات واضحة لبداية اليوم.</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link className="peek-action-teacher inline-flex items-center bg-orange-500 px-4 text-white" to="/teacher/attendance">تسجيل الحضور</Link>
-            <Link className="peek-action-teacher inline-flex items-center bg-sky-500 px-4 text-white" to="/teacher/activity/new">إضافة نشاط</Link>
-            <Link className="peek-action-teacher inline-flex items-center bg-emerald-500 px-4 text-white" to="/teacher/messages">مراسلة أولياء الأمور</Link>
+            <Link className="peek-action-teacher inline-flex items-center justify-center bg-orange-500 px-5 text-white" to="/teacher/attendance">تسجيل الحضور</Link>
+            <Link className="peek-action-teacher inline-flex items-center justify-center bg-sky-500 px-5 text-white" to="/teacher/activity/new">إضافة نشاط</Link>
+            <Link className="peek-action-teacher inline-flex items-center justify-center bg-emerald-500 px-5 text-white" to="/teacher/messages">مراسلة أولياء الأمور</Link>
           </div>
         </div>
 
-        <section className="peek-card p-4 space-y-2">
+        <section className="peek-card peek-role-panel-teacher p-4 space-y-2">
           <h2 className="font-semibold text-gray-900">الحضور</h2>
           {attendanceSummary.length > 0 ? (
             attendanceSummary.map((status, index) => (
@@ -84,7 +84,7 @@ const TeacherToday = () => {
           )}
         </section>
 
-        <section className="peek-card p-4 space-y-2">
+        <section className="peek-card peek-role-panel-teacher p-4 space-y-2">
           <h2 className="font-semibold text-gray-900">النشاطات</h2>
           {activitySummary.length > 0 ? (
             activitySummary.map((text, index) => (
