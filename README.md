@@ -67,6 +67,8 @@ gcloud run deploy daycareaapp-frontend \
   --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
 ```
 
+   Frontend source deploy uses buildpacks with `gcp-build` (`npm run build`) and starts on Cloud Run using `serve -s build -l $PORT` on port `8080`.
+
 5. Verify:
 
 - `GET https://<backend-url>/api/health`
@@ -159,7 +161,7 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 
 ```bash
 cd frontend
-yarn start
+yarn start:dev
 ```
 
 ### 4) Verify frontend
