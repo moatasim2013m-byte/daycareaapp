@@ -72,7 +72,7 @@ const TeacherMessages = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -98,7 +98,7 @@ const TeacherMessages = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>المحادثة</CardTitle>
           </CardHeader>
@@ -152,7 +152,7 @@ const TeacherMessages = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>إرسال رسالة</CardTitle>
           </CardHeader>

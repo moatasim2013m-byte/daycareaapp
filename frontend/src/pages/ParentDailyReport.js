@@ -177,7 +177,7 @@ const ParentDailyReport = () => {
           </Button>
         </div>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {needsChildInput && (
               <div className="space-y-2">
@@ -203,7 +203,7 @@ const ParentDailyReport = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>ملخص الحضور</CardTitle>
           </CardHeader>
@@ -229,7 +229,7 @@ const ParentDailyReport = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>سجل اليوم</CardTitle>
           </CardHeader>
@@ -258,7 +258,7 @@ const ParentDailyReport = () => {
           </CardContent>
         </Card>
 
-        <Card className="peek-card">
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>أنشطة اليوم</CardTitle>
           </CardHeader>

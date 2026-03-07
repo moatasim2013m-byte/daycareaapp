@@ -77,10 +77,10 @@ const BillingAccountingDemo = () => {
   const showButton = feeTab !== 'Fee Plan';
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
-      <div className="flex">
-        <aside className="h-screen w-64 border-r border-slate-200 bg-white p-4">
-          <div className="mb-5 text-lg font-semibold">Kids Club</div>
+    <div className="peek-page peek-role-admin text-slate-800" dir="rtl">
+      <div className="peek-shell max-w-none lg:flex">
+        <aside className="peek-card peek-role-panel-admin h-auto lg:h-[calc(100vh-2rem)] w-full lg:w-64 border-r border-slate-200 bg-white p-4">
+          <div className="mb-5 text-lg font-semibold">Peekaboo Day Care</div>
           <ul className="space-y-2 text-sm">
             {sideItems.map((item) => (
               <li key={item} className={`rounded-lg px-3 py-2 ${item === 'Billing & Accounting' || item === 'Tour Management' ? 'bg-sky-700 text-white' : 'text-slate-600'}`}>
@@ -102,8 +102,8 @@ const BillingAccountingDemo = () => {
           </div>
         </aside>
 
-        <main className="flex-1 p-6">
-          <div className="mb-6 flex items-center justify-between">
+        <main className="flex-1 p-2 lg:p-4">
+          <div className="peek-header peek-header--admin mb-6 flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-3xl font-semibold">Billing & Accounting</h1>
             <div className="flex gap-3">
               <button className={`rounded-lg px-4 py-2 ${section === 'fee-plan' ? 'bg-sky-700 text-white' : 'bg-white'}`} onClick={() => setSection('fee-plan')} type="button">Fee Plan</button>
@@ -112,7 +112,7 @@ const BillingAccountingDemo = () => {
           </div>
 
           {section === 'fee-plan' ? (
-            <section className="rounded-xl bg-white p-6 shadow-sm">
+            <section className="peek-card peek-role-panel-admin rounded-xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-semibold">{feeTab}</h2>
                 {showButton && (
@@ -160,7 +160,7 @@ const BillingAccountingDemo = () => {
             </section>
           ) : (
             <section className="space-y-6">
-              <div className="max-w-xl rounded-xl border border-slate-200 bg-white">
+              <div className="peek-card max-w-xl rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center justify-between rounded-t-xl bg-cyan-700 px-6 py-4 text-xl font-semibold text-white">
                   <span>Total Amount</span><span>INR 500</span>
                 </div>
@@ -171,7 +171,7 @@ const BillingAccountingDemo = () => {
                 </div>
               </div>
 
-              <table className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left">
+              <table className="peek-card w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="p-3">Invoice ID</th>
@@ -200,7 +200,7 @@ const BillingAccountingDemo = () => {
 
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-3xl rounded-xl bg-white">
+          <div className="peek-card w-full max-w-3xl rounded-xl bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
               <h3 className="text-3xl font-semibold text-slate-700">{modalConfigs[openModal].title}</h3>
               <button type="button" onClick={() => setOpenModal(null)}><X className="text-slate-500" /></button>
