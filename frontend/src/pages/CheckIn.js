@@ -271,13 +271,13 @@ const CheckIn = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="peek-page peek-role-admin" dir="rtl">
       {/* Header */}
-      <div className="bg-white border-b-4 border-playful-blue shadow-soft">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="peek-header peek-header--admin mb-4">
+        <div className="peek-shell max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-card bg-playful-blue/10 flex items-center justify-center">
+              <div className="w-12 h-12 peek-card bg-playful-blue/10 flex items-center justify-center">
                 <Scan className="w-6 h-6 text-playful-blue" />
               </div>
               <div>
@@ -289,12 +289,12 @@ const CheckIn = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="peek-shell max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card Scan Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Scan Card */}
-            <Card className="rounded-card border-2 border-gray-200">
+            <Card className="peek-card border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-playful-blue" />
@@ -327,7 +327,7 @@ const CheckIn = () => {
 
             {/* Scan Result */}
             {scanResult && (
-              <Card className={`rounded-card border-2 ${
+              <Card className={`peek-card border-2 ${
                 scanResult.status === 'READY_TO_CHECK_IN' ? 'border-playful-green' :
                 scanResult.status === 'ALREADY_CHECKED_IN' ? 'border-playful-orange' :
                 scanResult.status === 'ERROR' ? 'border-playful-red' :
@@ -476,7 +476,7 @@ const CheckIn = () => {
 
           {/* Active Sessions */}
           <div className="lg:col-span-1">
-            <Card className="rounded-card border-2 border-gray-200">
+            <Card className="peek-card border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

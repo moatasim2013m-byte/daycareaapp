@@ -60,9 +60,9 @@ const TeacherMessages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-4xl">
+        <div className="peek-header peek-header--teacher flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">الرسائل</h1>
             <p className="text-gray-600 mt-1">محادثة ولي الأمر للطفل</p>
@@ -72,7 +72,7 @@ const TeacherMessages = () => {
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -98,13 +98,13 @@ const TeacherMessages = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>المحادثة</CardTitle>
           </CardHeader>
           <CardContent>
             {messages.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center space-y-2">
+              <div className="peek-empty space-y-2">
                 <p className="text-gray-700 font-medium">لا توجد رسائل في هذه المحادثة حتى الآن.</p>
                 <p className="text-sm text-gray-500">
                   اكتب أول رسالة للطفل رقم {childId || '—'} لتبدأ التواصل مع ولي الأمر.
@@ -152,7 +152,7 @@ const TeacherMessages = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>إرسال رسالة</CardTitle>
           </CardHeader>
@@ -162,7 +162,7 @@ const TeacherMessages = () => {
               onChange={(e) => setText(e.target.value)}
               placeholder="اكتب رسالتك هنا"
             />
-            <Button type="button" onClick={handleSend}>إرسال</Button>
+            <Button type="button" onClick={handleSend} className="peek-action-teacher bg-orange-500 text-white hover:bg-orange-600">إرسال</Button>
           </CardContent>
         </Card>
       </div>

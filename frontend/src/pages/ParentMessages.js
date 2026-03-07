@@ -1,25 +1,31 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Badge } from '../components/ui/badge';
 import { resolveCachedChildContext } from '../utils/childContext';
 
-const ParentMessages = () => {
-  const [childId, setChildId] = useState('1');
-  useEffect(() => {
-    const context = resolveCachedChildContext();
-    if (context?.childId) {
-      setChildId(context.childId);
-    }
-  }, []);
+const parseCachedList = (raw) => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const readThread = (key) => {
+  const items = parseCachedList(localStorage.getItem(key));
+  return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+};
+
+const resolveChildName = (targetChildId) => {
+  const candidateKeys = ['children', 'children:list', 'cachedChildren', 'parentChildren'];
 
   for (const key of candidateKeys) {
     const list = parseCachedList(localStorage.getItem(key));
-    if (list.length === 0) continue;
-
     const matchedChild = list.find(
       (child) => String(child?.child_id ?? child?.childId ?? child?.id) === String(targetChildId)
     );
@@ -27,9 +33,7 @@ const ParentMessages = () => {
     if (!matchedChild) continue;
 
     const name = matchedChild?.full_name ?? matchedChild?.fullName ?? matchedChild?.name ?? matchedChild?.childName;
-    if (typeof name === 'string' && name.trim() !== '') {
-      return name.trim();
-    }
+    if (typeof name === 'string' && name.trim() !== '') return name.trim();
   }
 
   return null;
@@ -54,6 +58,13 @@ const ParentMessages = () => {
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState([]);
   const endOfMessagesRef = useRef(null);
+
+  useEffect(() => {
+    const context = resolveCachedChildContext();
+    if (context?.childId) {
+      setChildId(context.childId);
+    }
+  }, []);
 
   useEffect(() => {
     setMessages(readThread(`messagesThread:${childId}`));
@@ -84,20 +95,20 @@ const ParentMessages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6" dir="rtl">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="peek-page peek-role-parent" dir="rtl">
+      <div className="peek-shell max-w-3xl">
+        <div className="peek-header peek-header--parent flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">الرسائل</h1>
+            <h1 className="text-2xl font-bold text-gray-900">رسائل العائلة</h1>
             <p className="mt-1 text-sm text-gray-600">{childName ? `${childName}` : `الطفل رقم ${childId}`}</p>
-            <p className="text-sm text-gray-500">محادثة مع الحضانة</p>
+            <p className="text-sm text-gray-500">تواصل إنساني سريع مع الحضانة</p>
           </div>
           <Button asChild variant="outline">
             <Link to="/">العودة</Link>
           </Button>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="peek-card p-4">
           <div className="space-y-2">
             <Label htmlFor="childId">رقم الطفل</Label>
             <Input
@@ -109,10 +120,10 @@ const ParentMessages = () => {
             />
           </div>
 
-          <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto rounded-lg bg-gray-50 p-3">
+          <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto rounded-2xl bg-orange-50/50 p-3">
             {messages.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center">
-                <p className="text-lg font-medium text-gray-700">لا توجد رسائل بعد</p>
+              <div className="peek-empty">
+                <p className="text-lg font-medium text-gray-700">لا توجد رسائل بعد 💛</p>
                 <p className="mt-1 text-sm text-gray-500">ابدأ المحادثة بإرسال رسالة قصيرة إلى الحضانة.</p>
               </div>
             ) : (
@@ -124,12 +135,12 @@ const ParentMessages = () => {
                     key={message.id}
                     className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
                       isParentMessage
-                        ? 'mr-auto bg-blue-600 text-white'
-                        : 'ml-auto bg-white text-gray-900 border border-gray-200'
+                        ? 'mr-auto bg-rose-500 text-white'
+                        : 'ml-auto bg-white text-gray-900 border border-orange-100'
                     }`}
                   >
                     <p className="whitespace-pre-wrap text-sm leading-6">{message.text}</p>
-                    <p className={`mt-2 text-xs ${isParentMessage ? 'text-blue-100' : 'text-gray-500'}`}>
+                    <p className={`mt-2 text-xs ${isParentMessage ? 'text-rose-100' : 'text-gray-500'}`}>
                       {formatMessageTimestamp(message.createdAt)}
                     </p>
                   </div>
@@ -149,7 +160,7 @@ const ParentMessages = () => {
               rows={3}
             />
             <div className="flex justify-start">
-              <Button type="button" onClick={onSend} disabled={!draft.trim()}>
+              <Button type="button" onClick={onSend} disabled={!draft.trim()} className="bg-rose-500 text-white hover:bg-rose-600">
                 إرسال
               </Button>
             </div>

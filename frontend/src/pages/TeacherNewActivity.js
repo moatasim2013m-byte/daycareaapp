@@ -87,9 +87,9 @@ const TeacherNewActivity = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-4xl">
+        <div className="peek-header peek-header--teacher flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">إضافة نشاط</h1>
             <p className="text-gray-600 mt-1">إضافة منشور نشاط يومي للغرفة أو لطفل محدد</p>
@@ -99,7 +99,7 @@ const TeacherNewActivity = () => {
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>نموذج النشاط</CardTitle>
           </CardHeader>
@@ -156,11 +156,11 @@ const TeacherNewActivity = () => {
               </div>
             )}
 
-            <Button type="button" onClick={handleSave}>حفظ النشاط</Button>
+            <Button type="button" onClick={handleSave} className="peek-action-teacher bg-orange-500 text-white hover:bg-orange-600">حفظ النشاط</Button>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card">
           <CardHeader>
             <CardTitle>معاينة المنشورات ({currentDate})</CardTitle>
           </CardHeader>
@@ -172,7 +172,7 @@ const TeacherNewActivity = () => {
             ) : (
               <div className="space-y-3">
                 {entries.map((entry) => (
-                  <div key={entry.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div key={entry.id} className="rounded-2xl border border-orange-100 bg-white p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <p className="font-semibold text-gray-900">{entry.caption}</p>
