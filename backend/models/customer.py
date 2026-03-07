@@ -6,7 +6,9 @@ import uuid
 
 class GuardianInfo(BaseModel):
     name: str
+    mobile: Optional[str] = None
     phone: Optional[str] = None
+    whatsapp: Optional[str] = None
     email: Optional[str] = None
     national_id: Optional[str] = None
 
@@ -16,6 +18,9 @@ class CustomerCreate(BaseModel):
     card_number: str  # Physical card number/barcode
     child_name: str
     child_dob: date  # Date of birth (must be 4 years or below)
+    child_gender: Optional[str] = None
+    child_allergies: Optional[str] = None
+    child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
     notes: Optional[str] = None
@@ -24,6 +29,9 @@ class CustomerCreate(BaseModel):
 class CustomerUpdate(BaseModel):
     child_name: Optional[str] = None
     child_dob: Optional[date] = None
+    child_gender: Optional[str] = None
+    child_allergies: Optional[str] = None
+    child_notes: Optional[str] = None
     guardian: Optional[GuardianInfo] = None
     notes: Optional[str] = None
     status: Optional[str] = None
@@ -36,6 +44,9 @@ class Customer(BaseModel):
     card_number: str  # Physical card - unique identifier
     child_name: str
     child_dob: date
+    child_gender: Optional[str] = None
+    child_allergies: Optional[str] = None
+    child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
     waiver_accepted: bool = False
@@ -55,6 +66,9 @@ class CustomerResponse(BaseModel):
     card_number: str
     child_name: str
     child_dob: date
+    child_gender: Optional[str] = None
+    child_allergies: Optional[str] = None
+    child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
     waiver_accepted: bool

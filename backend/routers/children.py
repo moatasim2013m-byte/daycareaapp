@@ -66,6 +66,9 @@ async def create_child(
         guardian_id=guardian_id,
         full_name=child_data.full_name,
         birth_date=child_data.birth_date,
+        gender=child_data.gender,
+        allergies=child_data.allergies,
+        notes=child_data.notes,
         medical_notes=child_data.medical_notes
     )
     
@@ -138,6 +141,12 @@ async def update_child(
         update_data["full_name"] = updates.full_name
     if updates.birth_date:
         update_data["birth_date"] = updates.birth_date.isoformat()
+    if updates.gender is not None:
+        update_data["gender"] = updates.gender
+    if updates.allergies is not None:
+        update_data["allergies"] = updates.allergies
+    if updates.notes is not None:
+        update_data["notes"] = updates.notes
     if updates.medical_notes is not None:
         update_data["medical_notes"] = updates.medical_notes
     if updates.is_active is not None:
@@ -181,6 +190,9 @@ async def create_child_by_staff(
         guardian_id=guardian_id,
         full_name=child_data.full_name,
         birth_date=child_data.birth_date,
+        gender=child_data.gender,
+        allergies=child_data.allergies,
+        notes=child_data.notes,
         medical_notes=child_data.medical_notes
     )
     
