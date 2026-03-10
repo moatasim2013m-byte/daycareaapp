@@ -59,6 +59,25 @@ const Dashboard = () => {
     return date.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getElapsedMinutes = (session) => {
+    if (typeof session.durationMinutes === 'number' && session.durationMinutes >= 0) {
+      return session.durationMinutes;
+    }
+
+    const start = session.sessionStart || session.started_at || session.checkin_at;
+    if (!start) return 0;
+
+    const startedAt = new Date(start);
+    return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  };
+
+  const getCurrentCost = (session) => {
+    if (typeof session.totalCharge === 'number') {
+      return session.totalCharge.toFixed(2);
+    }
+    return '0.00';
+  };
+
   if (loading) {
     return (
       <div className="peek-page peek-role-admin flex items-center justify-center">
@@ -112,7 +131,7 @@ const Dashboard = () => {
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
                   <table className="w-full">
-                    <thead className="peek-table-head"><tr className="text-right"><th className="pb-3 font-medium text-gray-500">الطفل</th><th className="pb-3 font-medium text-gray-500">ولي الأمر</th><th className="pb-3 font-medium text-gray-500">المنطقة</th><th className="pb-3 font-medium text-gray-500">وقت الدخول</th><th className="pb-3 font-medium text-gray-500">المتبقي</th><th className="pb-3 font-medium text-gray-500">النوع</th></tr></thead>
+                    <thead className="peek-table-head"><tr className="text-right"><th className="pb-3 font-medium text-gray-500">الطفل</th><th className="pb-3 font-medium text-gray-500">ولي الأمر</th><th className="pb-3 font-medium text-gray-500">المنطقة</th><th className="pb-3 font-medium text-gray-500">وقت الدخول</th><th className="pb-3 font-medium text-gray-500">المدة</th><th className="pb-3 font-medium text-gray-500">التكلفة الحالية</th><th className="pb-3 font-medium text-gray-500">المتبقي</th><th className="pb-3 font-medium text-gray-500">النوع</th></tr></thead>
                     <tbody>
                       {activeSessions.map((session) => (
                         <tr key={session.session_id} className="border-b last:border-0 peek-table-row">
@@ -120,6 +139,8 @@ const Dashboard = () => {
                           <td className="py-3 text-gray-600">{session.guardian_name}</td>
                           <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs ${session.area === 'DAYCARE' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{session.area === 'DAYCARE' ? 'الحضانة' : 'الرمل'}</span></td>
                           <td className="py-3">{formatTime(session.checkin_at)}</td>
+                          <td className="py-3">{getElapsedMinutes(session)} دقيقة</td>
+                          <td className="py-3">{getCurrentCost(session)} د.أ</td>
                           <td className="py-3">{session.is_overdue ? <span className="text-red-500 font-bold">متأخر</span> : <span className={session.time_remaining_minutes < 30 ? 'text-orange-500' : ''}>{session.time_remaining_minutes} دقيقة</span>}</td>
                           <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs ${session.session_type === 'SUBSCRIPTION' ? 'bg-purple-100 text-purple-700' : session.session_type === 'VISIT_PACK' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{session.session_type === 'SUBSCRIPTION' ? 'اشتراك' : session.session_type === 'VISIT_PACK' ? 'باقة زيارات' : 'بالساعة'}</span></td>
                         </tr>
