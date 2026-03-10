@@ -152,6 +152,7 @@ const Dashboard = () => {
           <Card className="peek-card peek-role-panel-admin">
             <CardHeader><CardTitle className="text-lg">قسم ولي الأمر</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline"><Link to="/parent/dashboard">لوحة ولي الأمر</Link></Button>
               <Button asChild size="sm" variant="outline"><Link to="/parent/feed">الخلاصة اليومية</Link></Button>
               <Button asChild size="sm" variant="outline"><Link to="/parent/daily-report">التقرير اليومي</Link></Button>
             </CardContent>
