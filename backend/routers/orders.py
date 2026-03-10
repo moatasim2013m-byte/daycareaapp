@@ -4,6 +4,7 @@ from typing import List, Optional
 from models.order import Order, OrderCreate, OrderItem, OrderResponse, PaymentCreate, Payment
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
+from services.event_logger import eventLogger
 from datetime import datetime, timezone
 import random
 
@@ -138,6 +139,23 @@ async def create_order(
         user["user_id"], user["role"],
         after_state={"order_number": order.order_number, "total": order.total_amount}
     )
+
+    await eventLogger.log(
+        db,
+        "ORDER_CREATED",
+        {
+            "actorType": "staff" if user.get("role") != "PARENT" else "parent",
+            "actorId": user.get("user_id"),
+            "orderId": order.order_id,
+            "metadata": {
+                "order_number": order.order_number,
+                "guardian_id": guardian_id,
+                "child_id": order_data.child_id,
+                "total_amount": order.total_amount,
+                "item_count": len(order_items),
+            },
+        },
+    )
     
     return OrderResponse(**order.model_dump())
 
@@ -230,6 +248,22 @@ async def pay_order(
         user["user_id"], user["role"],
         before_state={"status": "OPEN"},
         after_state={"status": "PAID", "method": payment.method}
+    )
+
+    await eventLogger.log(
+        db,
+        "PAYMENT_CAPTURED",
+        {
+            "actorType": "staff" if user.get("role") != "PARENT" else "parent",
+            "actorId": user.get("user_id"),
+            "orderId": order_id,
+            "metadata": {
+                "payment_id": payment_record.payment_id,
+                "method": payment.method,
+                "amount": payment.amount,
+                "status": "COMPLETED",
+            },
+        },
     )
     
     # Get updated order
