@@ -127,6 +127,14 @@ async def create_indexes():
             print(f"Warning: audit_id index creation skipped: {exc}")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
     
+    # Event ledger
+    await db.event_ledger.create_index("id", unique=True)
+    await db.event_ledger.create_index([("eventType", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("branchId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("actorType", 1), ("actorId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("sessionId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("orderId", 1), ("timestamp", -1)])
+
     # Payments
     await db.payments.create_index("payment_id", unique=True)
     await db.payments.create_index("order_id")
