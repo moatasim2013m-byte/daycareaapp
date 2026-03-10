@@ -131,6 +131,13 @@ async def create_indexes():
     await db.payments.create_index("payment_id", unique=True)
     await db.payments.create_index("order_id")
 
+    # Events and bookings
+    await db.events.create_index("id", unique=True)
+    await db.events.create_index([("branch_id", 1), ("date", 1)])
+    await db.event_registrations.create_index("id", unique=True)
+    await db.event_registrations.create_index([("event_id", 1), ("status", 1)])
+    await db.event_registrations.create_index([("event_id", 1), ("customer_id", 1), ("status", 1)])
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -167,7 +174,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, events
 from routes import dev_seed
 
 
@@ -189,6 +196,7 @@ api_router.include_router(reports.router)
 api_router.include_router(users.router)
 api_router.include_router(branches.router)
 api_router.include_router(zones.router)
+api_router.include_router(events.router)
 api_router.include_router(dev_seed.router)
 
 # Mount API router

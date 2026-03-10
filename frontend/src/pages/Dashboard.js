@@ -93,6 +93,9 @@ const Dashboard = () => {
                 <Button asChild size="sm" variant="outline">
                   <Link to="/teacher/attendance">الحضور</Link>
                 </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/events">حجوزات الفعاليات</Link>
+                </Button>
               </CardContent>
             </Card>
           )}
