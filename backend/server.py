@@ -59,7 +59,12 @@ async def create_indexes():
     # Children
     await db.children.create_index("child_id", unique=True)
     await db.children.create_index("guardian_id")
+    await db.children.create_index("household_id")
     
+    # Households
+    await db.households.create_index("household_id", unique=True)
+    await db.households.create_index("primary_guardian")
+
     # Products
     await db.products.create_index("product_id", unique=True)
     await db.products.create_index("category")
@@ -131,6 +136,9 @@ async def create_indexes():
     await db.payments.create_index("payment_id", unique=True)
     await db.payments.create_index("order_id")
 
+    # Customers
+    await db.customers.create_index("household_id")
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -167,7 +175,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, households
 from routes import dev_seed
 
 
@@ -179,6 +187,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
 api_router.include_router(children.router)
 api_router.include_router(customers.router)
+api_router.include_router(households.router)
 api_router.include_router(products.router)
 api_router.include_router(orders.router)
 api_router.include_router(subscriptions.router)
