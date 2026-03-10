@@ -84,6 +84,15 @@ async def create_indexes():
     await db.checkin_sessions.create_index([("check_out_time", -1), ("status", 1)])
     await db.checkin_sessions.create_index([("branch_id", 1), ("check_in_time", -1)])
 
+    # Wristbands
+    await db.wristbands.create_index("id", unique=True)
+    await db.wristbands.create_index("code", unique=True)
+    await db.wristbands.create_index([("session_id", 1), ("status", 1)])
+
+    # Domain events
+    await db.events.create_index("event_id", unique=True)
+    await db.events.create_index([("type", 1), ("created_at", -1)])
+
     # Subscriptions
     await db.subscriptions.create_index("subscription_id", unique=True)
     await db.subscriptions.create_index("child_id")
@@ -167,7 +176,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, wristbands
 from routes import dev_seed
 
 
@@ -184,6 +193,7 @@ api_router.include_router(orders.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(sessions.router)
 api_router.include_router(checkin.router)
+api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
 api_router.include_router(users.router)
