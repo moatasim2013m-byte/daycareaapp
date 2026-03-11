@@ -5,7 +5,8 @@ from models.order import Order, OrderCreate, OrderItem, OrderResponse, PaymentCr
 from models.session import Session
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
-from datetime import datetime, timezone, timedelta
+from services.event_logger import eventLogger
+from datetime import datetime, timezone
 import random
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -181,6 +182,23 @@ async def create_order(
         after_state={"order_number": order.order_number, "total": order.total_amount}
     )
 
+    await eventLogger.log(
+        db,
+        "ORDER_CREATED",
+        {
+            "actorType": "staff" if user.get("role") != "PARENT" else "parent",
+            "actorId": user.get("user_id"),
+            "orderId": order.order_id,
+            "metadata": {
+                "order_number": order.order_number,
+                "guardian_id": guardian_id,
+                "child_id": order_data.child_id,
+                "total_amount": order.total_amount,
+                "item_count": len(order_items),
+            },
+        },
+    )
+    
     return OrderResponse(**order.model_dump())
 
 
@@ -259,6 +277,23 @@ async def _pay_order(order_id: str, payment: Optional[PaymentCreate], user: dict
         after_state={"status": "PAID", "method": method}
     )
 
+    await eventLogger.log(
+        db,
+        "PAYMENT_CAPTURED",
+        {
+            "actorType": "staff" if user.get("role") != "PARENT" else "parent",
+            "actorId": user.get("user_id"),
+            "orderId": order_id,
+            "metadata": {
+                "payment_id": payment_record.payment_id,
+                "method": payment.method,
+                "amount": payment.amount,
+                "status": "COMPLETED",
+            },
+        },
+    )
+    
+    # Get updated order
     updated = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
     await activate_play_session_for_order(updated, user, db)
 
