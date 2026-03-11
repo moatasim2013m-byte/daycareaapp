@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from services.notification_service import maybe_send_whatsapp_notification
 
 
 async def log_audit(
@@ -30,4 +31,12 @@ async def log_audit(
     }
     
     await db.audit_logs.insert_one(audit_entry)
+    await maybe_send_whatsapp_notification(
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        after_state=after_state,
+        notes=notes,
+    )
     return audit_entry
