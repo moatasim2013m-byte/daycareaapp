@@ -48,6 +48,9 @@ class Session(BaseModel):
     state: SessionState = "CREATED"
     
     # Time tracking
+    branchId: Optional[str] = None
+    sessionStart: Optional[datetime] = None
+    sessionEnd: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     checkin_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -61,6 +64,8 @@ class Session(BaseModel):
     overdue_minutes: int = 0
     
     # Billing
+    durationMinutes: int = 0
+    totalCharge: float = 0.0
     overdue_amount: float = 0.0
     overtime_order_id: Optional[str] = None  # Order for overtime fees
     
@@ -87,6 +92,10 @@ class SessionResponse(BaseModel):
     session_type: SessionType
     state: SessionState
     
+    branchId: Optional[str] = None
+    sessionStart: Optional[datetime] = None
+    sessionEnd: Optional[datetime] = None
+
     created_at: datetime
     checkin_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -96,6 +105,8 @@ class SessionResponse(BaseModel):
     
     included_minutes: int
     actual_minutes: int = 0
+    durationMinutes: int = 0
+    totalCharge: float = 0.0
     overdue_minutes: int = 0
     overdue_amount: float = 0.0
     

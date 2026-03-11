@@ -7,6 +7,7 @@ from models.session import (
 )
 from models.subscription import PLAN_TIME_WINDOWS
 from models.order import Order, OrderItem
+from models.pricing_rule import PricingRule
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
 from services.event_logger import eventLogger
@@ -55,6 +56,24 @@ def calculate_walk_in_price(hours: int) -> tuple:
         return (price, hours * 60)
 
 
+async def get_pricing_rule(db: AsyncIOMotorDatabase, branch_id: Optional[str]) -> dict:
+    if branch_id:
+        rule = await db.pricing_rules.find_one({"branchId": branch_id}, {"_id": 0})
+        if rule:
+            return rule
+
+    fallback = await db.pricing_rules.find_one({}, {"_id": 0})
+    if fallback:
+        return fallback
+
+    default_rule = PricingRule(branchId=branch_id or "default")
+    default_rule_doc = default_rule.model_dump()
+    default_rule_doc["created_at"] = default_rule_doc["created_at"].isoformat()
+    default_rule_doc["updated_at"] = default_rule_doc["updated_at"].isoformat()
+    await db.pricing_rules.insert_one(default_rule_doc)
+    return default_rule.model_dump()
+
+
 @router.get("", response_model=List[SessionResponse])
 async def list_sessions(
     state: Optional[str] = None,
@@ -89,7 +108,7 @@ async def list_sessions(
     
     for sess in sessions:
         # Parse dates
-        for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at"]:
+        for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at", "sessionStart", "sessionEnd"]:
             if isinstance(sess.get(field), str):
                 sess[field] = datetime.fromisoformat(sess[field])
         
@@ -134,11 +153,20 @@ async def get_active_sessions(
     now = datetime.now(timezone.utc)
     
     for sess in sessions:
-        for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at"]:
+        for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at", "sessionStart", "sessionEnd"]:
             if isinstance(sess.get(field), str):
                 sess[field] = datetime.fromisoformat(sess[field])
         
         # Calculate time remaining / overdue
+        branch_id = sess.get("branchId") or user.get("branch_id")
+        pricing_rule = await get_pricing_rule(db, branch_id)
+        duration_minutes, total_charge = calculateSessionPrice(
+            {**sess, "sessionEnd": now},
+            pricing_rule,
+        )
+        sess["durationMinutes"] = duration_minutes
+        sess["totalCharge"] = total_charge
+
         if sess.get("planned_end_at"):
             planned_end = sess["planned_end_at"]
             if planned_end.tzinfo is None:
@@ -378,6 +406,8 @@ async def check_in(
     session = Session(
         child_id=request.child_id,
         guardian_id=request.guardian_id,
+        branchId=user.get("branch_id"),
+        sessionStart=now,
         area=request.area,
         session_type=session_type,
         state="ACTIVE",  # Skip CHECKED_IN, go directly to ACTIVE
@@ -392,6 +422,8 @@ async def check_in(
     )
     
     session_dict = session.model_dump()
+    if session_dict.get("sessionStart"):
+        session_dict["sessionStart"] = session_dict["sessionStart"].isoformat()
     session_dict["created_at"] = session_dict["created_at"].isoformat()
     session_dict["checkin_at"] = session_dict["checkin_at"].isoformat()
     session_dict["started_at"] = session_dict["started_at"].isoformat()
@@ -459,6 +491,7 @@ async def check_out(
         )
     
     now = datetime.now(timezone.utc)
+    pricing_rule = await get_pricing_rule(db, session.get("branchId") or user.get("branch_id"))
     
     # Calculate actual duration
     started_at = session.get("started_at")
@@ -473,6 +506,14 @@ async def check_out(
     # Calculate overdue
     overdue_minutes = max(0, actual_minutes - included_minutes)
     overdue_amount = calculate_overtime_fee(overdue_minutes)
+    duration_minutes, total_charge = calculateSessionPrice(
+        {
+            **session,
+            "sessionStart": session.get("sessionStart") or started_at,
+            "sessionEnd": now,
+        },
+        pricing_rule,
+    )
     
     overtime_order_id = None
     
@@ -520,8 +561,11 @@ async def check_out(
                 "ended_at": now.isoformat(),
                 "closed_at": now.isoformat(),
                 "actual_minutes": actual_minutes,
+                "durationMinutes": duration_minutes,
+                "totalCharge": total_charge,
                 "overdue_minutes": overdue_minutes,
                 "overdue_amount": overdue_amount,
+                "sessionEnd": now.isoformat(),
                 "overtime_order_id": overtime_order_id,
                 "checked_out_by": user["user_id"],
                 "updated_at": now.isoformat()
@@ -541,7 +585,7 @@ async def check_out(
     
     # Get updated session
     updated = await db.sessions.find_one({"session_id": request.session_id}, {"_id": 0})
-    for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at"]:
+    for field in ["created_at", "checkin_at", "started_at", "planned_end_at", "ended_at", "closed_at", "sessionStart", "sessionEnd"]:
         if isinstance(updated.get(field), str):
             updated[field] = datetime.fromisoformat(updated[field])
     

@@ -50,6 +50,25 @@ const Dashboard = () => {
 
   const topProducts = useMemo(() => analytics.revenue?.charts?.top_products || [], [analytics]);
 
+  const getElapsedMinutes = (session) => {
+    if (typeof session.durationMinutes === 'number' && session.durationMinutes >= 0) {
+      return session.durationMinutes;
+    }
+
+    const start = session.sessionStart || session.started_at || session.checkin_at;
+    if (!start) return 0;
+
+    const startedAt = new Date(start);
+    return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  };
+
+  const getCurrentCost = (session) => {
+    if (typeof session.totalCharge === 'number') {
+      return session.totalCharge.toFixed(2);
+    }
+    return '0.00';
+  };
+
   if (loading) {
     return (
       <div className="peek-page peek-role-admin flex items-center justify-center">
