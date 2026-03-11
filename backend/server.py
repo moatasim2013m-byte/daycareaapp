@@ -55,12 +55,12 @@ async def create_indexes():
     # Users
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
-    
+
     # Children
     await db.children.create_index("child_id", unique=True)
     await db.children.create_index("guardian_id")
     await db.children.create_index("household_id")
-    
+
     # Households
     await db.households.create_index("household_id", unique=True)
     await db.households.create_index("primary_guardian")
@@ -68,13 +68,13 @@ async def create_indexes():
     # Products
     await db.products.create_index("product_id", unique=True)
     await db.products.create_index("category")
-    
+
     # Orders
     await db.orders.create_index("order_id", unique=True)
     await db.orders.create_index("order_number", unique=True)
     await db.orders.create_index("guardian_id")
     await db.orders.create_index([("status", 1), ("created_at", -1)])
-    
+
     # Sessions - critical for active session queries
     await db.sessions.create_index("session_id", unique=True)
     await db.sessions.create_index("child_id")
@@ -102,16 +102,16 @@ async def create_indexes():
     await db.subscriptions.create_index("subscription_id", unique=True)
     await db.subscriptions.create_index("child_id")
     await db.subscriptions.create_index([("child_id", 1), ("status", 1)])
-    
+
     # Visit Packs
     await db.visit_packs.create_index("pack_id", unique=True)
     await db.visit_packs.create_index("child_id")
     await db.visit_packs.create_index([("child_id", 1), ("status", 1)])
-    
+
     # Entitlement Usage
     await db.entitlement_usage.create_index("usage_id", unique=True)
     await db.entitlement_usage.create_index([("subscription_id", 1), ("usage_date", 1)])
-    
+
     # Audit logs: unique only when audit_id exists and is non-null string
     try:
         await db.audit_logs.create_index(
@@ -140,7 +140,7 @@ async def create_indexes():
         else:
             print(f"Warning: audit_id index creation skipped: {exc}")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
-    
+
     # Event ledger
     await db.event_ledger.create_index("id", unique=True)
     await db.event_ledger.create_index([("eventType", 1), ("timestamp", -1)])
@@ -192,7 +192,25 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, wristbands
+from routers import (
+    analytics,
+    auth,
+    branches,
+    checkin,
+    children,
+    customers,
+    entitlements,
+    events,
+    households,
+    orders,
+    products,
+    reports,
+    sessions,
+    subscriptions,
+    users,
+    wristbands,
+    zones,
+)
 from routes import dev_seed
 
 
