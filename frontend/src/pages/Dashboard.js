@@ -7,7 +7,12 @@ import { Button } from '../components/ui/button';
 import { Activity, Baby, CalendarDays, CreditCard, DollarSign, LineChart, ShoppingBag, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart as ReLineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-const money = (amount) => `${(amount || 0).toFixed(2)} د.أ`;
+const toSafeNumber = (value) => {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const money = (amount) => `${toSafeNumber(amount).toFixed(2)} د.أ`;
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -63,8 +68,9 @@ const Dashboard = () => {
   };
 
   const getCurrentCost = (session) => {
-    if (typeof session.totalCharge === 'number') {
-      return session.totalCharge.toFixed(2);
+    const totalCharge = toSafeNumber(session.totalCharge);
+    if (totalCharge > 0 || session.totalCharge === 0 || session.totalCharge === '0') {
+      return totalCharge.toFixed(2);
     }
     return '0.00';
   };
