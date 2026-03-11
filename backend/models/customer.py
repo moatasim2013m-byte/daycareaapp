@@ -23,6 +23,7 @@ class CustomerCreate(BaseModel):
     child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
+    household_id: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -33,6 +34,7 @@ class CustomerUpdate(BaseModel):
     child_allergies: Optional[str] = None
     child_notes: Optional[str] = None
     guardian: Optional[GuardianInfo] = None
+    household_id: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
@@ -49,6 +51,7 @@ class Customer(BaseModel):
     child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
+    household_id: Optional[str] = None
     waiver_accepted: bool = False
     waiver_accepted_at: Optional[datetime] = None
     notes: Optional[str] = None
@@ -71,6 +74,7 @@ class CustomerResponse(BaseModel):
     child_notes: Optional[str] = None
     guardian: GuardianInfo
     branch_id: str
+    household_id: Optional[str] = None
     waiver_accepted: bool
     waiver_accepted_at: Optional[datetime] = None
     notes: Optional[str] = None
