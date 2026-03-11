@@ -65,6 +65,7 @@ async def create_child(
     child = Child(
         guardian_id=guardian_id,
         full_name=child_data.full_name,
+        household_id=child_data.household_id,
         birth_date=child_data.birth_date,
         gender=child_data.gender,
         allergies=child_data.allergies,
@@ -141,6 +142,8 @@ async def update_child(
         update_data["full_name"] = updates.full_name
     if updates.birth_date:
         update_data["birth_date"] = updates.birth_date.isoformat()
+    if updates.household_id is not None:
+        update_data["household_id"] = updates.household_id
     if updates.gender is not None:
         update_data["gender"] = updates.gender
     if updates.allergies is not None:

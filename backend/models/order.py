@@ -5,11 +5,12 @@ import uuid
 
 OrderStatus = Literal["OPEN", "PAID", "CANCELLED", "REFUNDED"]
 PaymentMethod = Literal["CASH", "CARD"]
+OrderSource = Literal["POS", "ONLINE", "CHECKIN"]
 
 class OrderItemCreate(BaseModel):
     product_id: str
     quantity: int = 1
-    unit_price: float
+    unit_price: Optional[float] = None
     notes: Optional[str] = None
 
 
@@ -31,6 +32,7 @@ class OrderCreate(BaseModel):
     child_id: Optional[str] = None
     items: List[OrderItemCreate]
     payment_method: PaymentMethod = "CASH"
+    order_source: OrderSource = "POS"
     notes: Optional[str] = None
 
 
@@ -44,9 +46,11 @@ class Order(BaseModel):
     items: List[OrderItem] = []
     subtotal: float = 0.0
     tax_amount: float = 0.0
+    tax_rate: float = 0.16
     total_amount: float = 0.0
     status: OrderStatus = "OPEN"
     payment_method: Optional[PaymentMethod] = None
+    order_source: OrderSource = "POS"
     paid_at: Optional[datetime] = None
     notes: Optional[str] = None
     created_by: Optional[str] = None  # Staff user_id
@@ -64,9 +68,11 @@ class OrderResponse(BaseModel):
     items: List[OrderItem]
     subtotal: float
     tax_amount: float
+    tax_rate: float
     total_amount: float
     status: OrderStatus
     payment_method: Optional[PaymentMethod] = None
+    order_source: OrderSource = "POS"
     paid_at: Optional[datetime] = None
     notes: Optional[str] = None
     created_at: datetime
@@ -77,8 +83,8 @@ class OrderResponse(BaseModel):
 
 class PaymentCreate(BaseModel):
     order_id: str
-    method: PaymentMethod
-    amount: float
+    method: PaymentMethod = "CASH"
+    amount: float = 0.0
 
 
 class Payment(BaseModel):

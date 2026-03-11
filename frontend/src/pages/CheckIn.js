@@ -42,6 +42,10 @@ const CheckIn = () => {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [checkoutResult, setCheckoutResult] = useState(null);
+  const [assignSessionId, setAssignSessionId] = useState('');
+  const [assignedWristband, setAssignedWristband] = useState(null);
+  const [scanWristbandCode, setScanWristbandCode] = useState('');
+  const [wristbandScanResult, setWristbandScanResult] = useState(null);
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -279,6 +283,44 @@ const CheckIn = () => {
     const included = session.included_minutes || 120;
     const overdue = Math.max(0, elapsed - included);
     return { elapsed, included, overdue, isOverdue: overdue > 0 };
+  };
+
+  const handleAssignWristband = async () => {
+    if (!assignSessionId || !selectedBranch) return;
+
+    setLoading(true);
+    try {
+      const selectedSession = activeSessions.find((session) => session.session_id === assignSessionId);
+      const response = await api.post('/wristbands/assign', {
+        session_id: assignSessionId,
+        branch_id: selectedBranch.branch_id,
+        child_id: selectedSession?.customer_id || null,
+      });
+      setAssignedWristband(response.data);
+      setWristbandScanResult(null);
+      await fetchActiveSessions();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'تعذر إصدار السوار');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScanWristband = async () => {
+    if (!scanWristbandCode.trim()) return;
+
+    setLoading(true);
+    try {
+      const response = await api.post('/wristbands/scan', {
+        code: scanWristbandCode.trim(),
+      });
+      setWristbandScanResult(response.data);
+      await fetchActiveSessions();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'تعذر تفعيل السوار');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -548,6 +590,64 @@ const CheckIn = () => {
                         </Button>
                       </div>
                     )})}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="peek-card border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle>سوار QR</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Label>إصدار سوار للجلسة</Label>
+                <select
+                  className="w-full border rounded-md p-2"
+                  value={assignSessionId}
+                  onChange={(event) => setAssignSessionId(event.target.value)}
+                >
+                  <option value="">اختر جلسة نشطة</option>
+                  {activeSessions.map((session) => (
+                    <option key={session.session_id} value={session.session_id}>
+                      {session.child_name || session.customer_id} - {session.session_id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+                <Button onClick={handleAssignWristband} disabled={loading || !assignSessionId} className="w-full">
+                  Assign wristband
+                </Button>
+
+                {assignedWristband && (
+                  <div className="border rounded-lg p-3 space-y-2 bg-gray-50">
+                    <p className="text-sm">Code: <strong>{assignedWristband.code}</strong></p>
+                    <img src={assignedWristband.qr_code_url} alt="Wristband QR" className="w-40 h-40 mx-auto" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="peek-card border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle>تفعيل الجلسة عبر السوار</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Input
+                  type="text"
+                  placeholder="امسح كود السوار"
+                  value={scanWristbandCode}
+                  onChange={(event) => setScanWristbandCode(event.target.value)}
+                />
+                <Button onClick={handleScanWristband} disabled={loading || !scanWristbandCode.trim()} className="w-full">
+                  Activate session
+                </Button>
+
+                {wristbandScanResult && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+                    <p>تم تفعيل الجلسة بنجاح</p>
+                    <p>Session: {wristbandScanResult.session_id}</p>
+                    <p>Status: {wristbandScanResult.status}</p>
                   </div>
                 )}
               </CardContent>

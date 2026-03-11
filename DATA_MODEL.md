@@ -66,10 +66,27 @@ Indexes:
 - `{ guardian_id: 1 }` unique
 - `{ branch_id: 1, phone: 1 }`
 
-### 5) `children`
+### 5) `households`
+- `_id`
+- `household_id`
+- `primary_guardian`
+- `phone`
+- `email`
+- `children` (array of `child_id`)
+- `authorized_pickups` (array)
+- `memberships` (array)
+- `payment_methods` (array)
+- `created_at`, `updated_at`
+
+Indexes:
+- `{ household_id: 1 }` unique
+- `{ primary_guardian: 1 }`
+
+### 6) `children`
 - `_id`
 - `child_id`
 - `guardian_id`
+- `household_id`
 - `branch_id`
 - `full_name`
 - `birth_date`
@@ -78,9 +95,10 @@ Indexes:
 
 Indexes:
 - `{ guardian_id: 1 }`
+- `{ household_id: 1 }`
 - `{ branch_id: 1, full_name: 1 }`
 
-### 6) `waiver_templates`
+### 7) `waiver_templates`
 - `_id`
 - `template_id`
 - `branch_id`
@@ -93,7 +111,7 @@ Indexes:
 - `{ branch_id: 1, is_active: 1 }`
 - `{ branch_id: 1, version: -1 }`
 
-### 7) `waiver_signatures`
+### 8) `waiver_signatures`
 - `_id`
 - `signature_id`
 - `branch_id`
@@ -108,7 +126,7 @@ Indexes:
 - `{ branch_id: 1, guardian_id: 1, status: 1 }`
 - `{ expires_at: 1 }`
 
-### 8) `products`
+### 9) `products`
 - `_id`
 - `product_id`
 - `branch_id` (nullable if globally shared)
@@ -121,7 +139,7 @@ Indexes:
 Indexes:
 - `{ branch_id: 1, category: 1, is_active: 1 }`
 
-### 9) `orders`
+### 10) `orders`
 - `_id`
 - `order_id`
 - `branch_id`
@@ -135,7 +153,7 @@ Indexes:
 - `{ branch_id: 1, created_at: -1 }`
 - `{ branch_id: 1, status: 1 }`
 
-### 10) `order_items`
+### 11) `order_items`
 - `_id`
 - `order_id`
 - `branch_id`
@@ -148,7 +166,7 @@ Indexes:
 - `{ order_id: 1 }`
 - `{ branch_id: 1, product_id: 1 }`
 
-### 11) `payments`
+### 12) `payments`
 - `_id`
 - `payment_id`
 - `order_id`
@@ -163,7 +181,7 @@ Indexes:
 - `{ order_id: 1 }`
 - `{ branch_id: 1, created_at: -1 }`
 
-### 12) `refunds_voids`
+### 13) `refunds_voids`
 - `_id`
 - `event_id`
 - `branch_id`
@@ -179,7 +197,7 @@ Indexes:
 - `{ branch_id: 1, created_at: -1 }`
 - `{ order_id: 1 }`
 
-### 13) `booking_slots`
+### 14) `booking_slots`
 - `_id`
 - `slot_id`
 - `branch_id`
@@ -192,7 +210,7 @@ Indexes (required):
 - `{ branch_id: 1, zone_id: 1, start_at: 1 }`  
 - `{ branch_id: 1, start_at: 1, end_at: 1 }`
 
-### 14) `bookings`
+### 15) `bookings`
 - `_id`
 - `booking_id`
 - `branch_id`
@@ -207,7 +225,7 @@ Indexes:
 - `{ branch_id: 1, slot_id: 1 }`
 - `{ guardian_id: 1, created_at: -1 }`
 
-### 15) `sessions`
+### 16) `sessions`
 - `_id`
 - `session_id`
 - `branch_id`
@@ -224,7 +242,7 @@ Indexes (required):
 - `{ branch_id: 1, checkin_at: -1 }`
 - `{ wristband_id: 1 }` (lookup)
 
-### 16) `wristbands`
+### 17) `wristbands`
 - `_id`
 - `wristband_id`
 - `branch_id`
@@ -235,7 +253,7 @@ Indexes:
 - `{ branch_id: 1, wristband_id: 1 }` unique
 - `{ assigned_session_id: 1 }`
 
-### 17) `membership_plans`
+### 18) `membership_plans`
 - `_id`
 - `plan_id`
 - `branch_id`
@@ -248,7 +266,7 @@ Indexes:
 Indexes:
 - `{ branch_id: 1, plan_type: 1, is_active: 1 }`
 
-### 18) `membership_subscriptions`
+### 19) `membership_subscriptions`
 - `_id`
 - `subscription_id`
 - `branch_id`
@@ -262,7 +280,7 @@ Indexes:
 - `{ branch_id: 1, guardian_id: 1, status: 1 }`
 - `{ end_at: 1 }`
 
-### 19) `loyalty_ledger`
+### 20) `loyalty_ledger`
 - `_id`
 - `entry_id`
 - `branch_id`
@@ -275,7 +293,7 @@ Indexes:
 Indexes:
 - `{ branch_id: 1, guardian_id: 1, created_at: -1 }`
 
-### 20) `audit_logs`
+### 21) `audit_logs`
 - `_id`
 - `audit_id`
 - `branch_id`
@@ -290,7 +308,7 @@ Indexes:
 - `{ branch_id: 1, created_at: -1 }`
 - `{ entity_type: 1, entity_id: 1, created_at: -1 }`
 
-### 21) `enquiry_forms`
+### 22) `enquiry_forms`
 - `_id`
 - `form_id`
 - `branch_id`
@@ -307,7 +325,7 @@ Indexes:
 - `{ branch_id: 1, status: 1, updated_at: -1 }`
 - `{ form_id: 1 }` unique
 
-### 22) `enquiry_leads`
+### 23) `enquiry_leads`
 - `_id`
 - `lead_id`
 - `branch_id`
@@ -327,7 +345,7 @@ Indexes:
 - `{ branch_id: 1, assigned_to: 1, next_follow_up_at: 1 }`
 - `{ branch_id: 1, parent_phone: 1 }`
 
-### 23) `enquiry_activities`
+### 24) `enquiry_activities`
 - `_id`
 - `activity_id`
 - `branch_id`
