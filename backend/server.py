@@ -127,6 +127,12 @@ async def create_indexes():
             print(f"Warning: audit_id index creation skipped: {exc}")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
     
+    # Devices
+    await db.devices.create_index("id", unique=True)
+    await db.devices.create_index([("branchId", 1), ("status", 1)])
+    await db.device_events.create_index([("id", 1), ("createdAt", -1)])
+    await db.device_events.create_index("eventType")
+
     # Payments
     await db.payments.create_index("payment_id", unique=True)
     await db.payments.create_index("order_id")
@@ -167,7 +173,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, devices
 from routes import dev_seed
 
 
@@ -189,6 +195,7 @@ api_router.include_router(reports.router)
 api_router.include_router(users.router)
 api_router.include_router(branches.router)
 api_router.include_router(zones.router)
+api_router.include_router(devices.router)
 api_router.include_router(dev_seed.router)
 
 # Mount API router
