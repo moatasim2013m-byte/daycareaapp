@@ -24,6 +24,8 @@ const Dashboard = () => {
   });
   const [children, setChildren] = useState([]);
 
+  const safeChildren = Array.isArray(children) ? children : [];
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -41,7 +43,7 @@ const Dashboard = () => {
           });
         } else {
           const childrenRes = await api.get('/children');
-          setChildren(childrenRes.data || []);
+          setChildren(Array.isArray(childrenRes.data) ? childrenRes.data : []);
         }
       } catch (error) {
         console.error('Error fetching dashboard analytics:', error);
@@ -224,10 +226,10 @@ const Dashboard = () => {
           <Card className="peek-card peek-role-panel-admin">
             <CardHeader><CardTitle className="flex items-center gap-2"><Baby className="w-5 h-5 text-blue-500" />أطفالي</CardTitle></CardHeader>
             <CardContent>
-              {children.length === 0 ? (
+              {safeChildren.length === 0 ? (
                 <div className="peek-empty"><p className="text-gray-500 mb-4">لم تقم بإضافة أطفال بعد</p><Button variant="outline">إضافة طفل</Button></div>
               ) : (
-                <div className="space-y-3">{children.map((child) => (<div key={child.child_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><div><p className="font-medium">{child.full_name}</p><p className="text-sm text-gray-500">{child.age_years} سنوات</p></div><Button variant="outline" size="sm">عرض</Button></div>))}</div>
+                <div className="space-y-3">{safeChildren.map((child) => (<div key={child.child_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><div><p className="font-medium">{child.full_name}</p><p className="text-sm text-gray-500">{child.age_years} سنوات</p></div><Button variant="outline" size="sm">عرض</Button></div>))}</div>
               )}
             </CardContent>
           </Card>
