@@ -192,7 +192,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, wristbands
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, wristbands, households, analytics, events
 from routes import dev_seed
 
 
