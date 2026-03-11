@@ -85,6 +85,11 @@ This contract reflects the **current implementation** in `backend/server.py` + `
 - `GET /api/reports/export/daily`
 - `GET /api/reports/export/revenue`
 
+### Analytics
+- `GET /api/analytics/revenue`
+- `GET /api/analytics/attendance`
+- `GET /api/analytics/sessions`
+
 ---
 
 ## Frontend-Wired Endpoints (Verified)
@@ -94,7 +99,7 @@ The frontend currently calls these endpoint groups, and they all exist in backen
 - Auth: `/auth/login`, `/auth/register`
 - Branches/Zones: `/branches`, `/zones`
 - Reception/POS: `/checkin/active`, `/checkin/scan`, `/checkin`, `/checkin/{id}/checkout`, `/customers`, `/customers/{id}/waiver`, `/products`, `/orders`, `/orders/{id}/pay`
-- Dashboard/ops: `/reports/daily-summary`, `/sessions/active`, `/children`, `/users`
+- Dashboard/ops: `/analytics/revenue`, `/analytics/attendance`, `/analytics/sessions`, `/children`, `/users`
 
 Status: **No route-level mismatch for currently wired frontend API calls**.
 
