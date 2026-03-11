@@ -185,6 +185,16 @@ function App() {
             }
           />
 
+
+          <Route
+            path="/parent/dashboard"
+            element={
+              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+                <ParentDashboard />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/parent/feed"
             element={
