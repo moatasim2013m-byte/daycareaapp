@@ -4,6 +4,7 @@ from typing import List, Optional
 from models.checkin import CheckInSession, CheckInCreate, CheckInSessionResponse
 from middleware.auth import require_role
 from utils.audit import log_audit
+from services.event_logger import eventLogger
 from datetime import datetime, timezone
 from uuid import uuid4
 import math
@@ -362,6 +363,23 @@ async def check_in(
         after_state={"customer_id": customer["customer_id"], "payment_type": payment_type},
         notes=f"Check-in: {customer.get('child_name')}"
     )
+    await eventLogger.log(
+        db,
+        "CHECK_IN",
+        {
+            "actorType": "staff",
+            "actorId": user.get("user_id"),
+            "sessionId": session.session_id,
+            "branchId": checkin_data.branch_id,
+            "metadata": {
+                "customer_id": customer.get("customer_id"),
+                "child_name": customer.get("child_name"),
+                "payment_type": payment_type,
+                "subscription_id": subscription_id,
+            },
+        },
+    )
+
     
     response = CheckInSessionResponse(**session.model_dump())
     response.child_name = customer.get("child_name")
@@ -442,6 +460,24 @@ async def check_out(
         },
         notes=f"Check-out after {duration} minutes"
     )
+    await eventLogger.log(
+        db,
+        "CHECK_OUT",
+        {
+            "actorType": "staff",
+            "actorId": user.get("user_id"),
+            "sessionId": session_id,
+            "orderId": overtime_order_id,
+            "branchId": session.get("branch_id"),
+            "metadata": {
+                "customer_id": session.get("customer_id"),
+                "duration_minutes": duration,
+                "overdue_minutes": overdue_meta.get("overdue_minutes"),
+                "overdue_amount": overdue_meta.get("overdue_amount"),
+            },
+        },
+    )
+
     
     # Get updated session
     updated = await db.checkin_sessions.find_one({"session_id": session_id}, {"_id": 0})

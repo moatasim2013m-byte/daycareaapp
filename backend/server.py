@@ -59,7 +59,12 @@ async def create_indexes():
     # Children
     await db.children.create_index("child_id", unique=True)
     await db.children.create_index("guardian_id")
+    await db.children.create_index("household_id")
     
+    # Households
+    await db.households.create_index("household_id", unique=True)
+    await db.households.create_index("primary_guardian")
+
     # Products
     await db.products.create_index("product_id", unique=True)
     await db.products.create_index("category")
@@ -83,6 +88,15 @@ async def create_indexes():
     await db.checkin_sessions.create_index([("customer_id", 1), ("status", 1)])
     await db.checkin_sessions.create_index([("check_out_time", -1), ("status", 1)])
     await db.checkin_sessions.create_index([("branch_id", 1), ("check_in_time", -1)])
+
+    # Wristbands
+    await db.wristbands.create_index("id", unique=True)
+    await db.wristbands.create_index("code", unique=True)
+    await db.wristbands.create_index([("session_id", 1), ("status", 1)])
+
+    # Domain events
+    await db.events.create_index("event_id", unique=True)
+    await db.events.create_index([("type", 1), ("created_at", -1)])
 
     # Subscriptions
     await db.subscriptions.create_index("subscription_id", unique=True)
@@ -127,16 +141,20 @@ async def create_indexes():
             print(f"Warning: audit_id index creation skipped: {exc}")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1), ("created_at", -1)])
     
+    # Event ledger
+    await db.event_ledger.create_index("id", unique=True)
+    await db.event_ledger.create_index([("eventType", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("branchId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("actorType", 1), ("actorId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("sessionId", 1), ("timestamp", -1)])
+    await db.event_ledger.create_index([("orderId", 1), ("timestamp", -1)])
+
     # Payments
     await db.payments.create_index("payment_id", unique=True)
     await db.payments.create_index("order_id")
 
-    # Events and bookings
-    await db.events.create_index("id", unique=True)
-    await db.events.create_index([("branch_id", 1), ("date", 1)])
-    await db.event_registrations.create_index("id", unique=True)
-    await db.event_registrations.create_index([("event_id", 1), ("status", 1)])
-    await db.event_registrations.create_index([("event_id", 1), ("customer_id", 1), ("status", 1)])
+    # Customers
+    await db.customers.create_index("household_id")
 
 
 # Create FastAPI app
@@ -174,7 +192,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import routers
-from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, events
+from routers import auth, children, products, orders, subscriptions, sessions, entitlements, reports, users, branches, zones, checkin, customers, wristbands
 from routes import dev_seed
 
 
@@ -186,13 +204,16 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
 api_router.include_router(children.router)
 api_router.include_router(customers.router)
+api_router.include_router(households.router)
 api_router.include_router(products.router)
 api_router.include_router(orders.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(sessions.router)
 api_router.include_router(checkin.router)
+api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
+api_router.include_router(analytics.router)
 api_router.include_router(users.router)
 api_router.include_router(branches.router)
 api_router.include_router(zones.router)
