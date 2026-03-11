@@ -217,6 +217,7 @@ api_router.include_router(analytics.router)
 api_router.include_router(users.router)
 api_router.include_router(branches.router)
 api_router.include_router(zones.router)
+api_router.include_router(events.router)
 api_router.include_router(dev_seed.router)
 
 # Mount API router
