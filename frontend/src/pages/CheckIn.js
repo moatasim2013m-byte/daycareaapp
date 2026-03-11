@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -80,14 +80,7 @@ const CheckIn = () => {
     fetchBranches();
   }, [user]);
 
-  // Fetch active sessions
-  useEffect(() => {
-    if (selectedBranch) {
-      fetchActiveSessions();
-    }
-  }, [selectedBranch]);
-
-  const fetchActiveSessions = async () => {
+  const fetchActiveSessions = useCallback(async () => {
     try {
       const response = await api.get('/checkin/active', {
         params: { branch_id: selectedBranch?.branch_id }
@@ -96,7 +89,14 @@ const CheckIn = () => {
     } catch (error) {
       console.error('Error fetching active sessions:', error);
     }
-  };
+  }, [selectedBranch]);
+
+  // Fetch active sessions
+  useEffect(() => {
+    if (selectedBranch) {
+      fetchActiveSessions();
+    }
+  }, [selectedBranch, fetchActiveSessions]);
 
   useEffect(() => {
     const timer = setInterval(() => {
