@@ -3,6 +3,15 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+const ROLES = {
+  ADMIN: 'ADMIN',
+  RECEPTION: 'RECEPTION',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT'
+};
+
+const normalizeRole = (role) => role?.toUpperCase?.() || role;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,7 +22,8 @@ export const AuthProvider = ({ children }) => {
     
     if (token && savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser({ ...parsedUser, role: normalizeRole(parsedUser?.role) });
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       } catch (e) {
         localStorage.removeItem('token');
@@ -31,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
     
-    setUser(userData);
+    setUser({ ...userData, role: normalizeRole(userData?.role) });
     return userData;
   };
 
@@ -40,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-    setUser(userData);
+    setUser({ ...userData, role: normalizeRole(userData?.role) });
     return userData;
   };
 
@@ -52,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
     
-    setUser(userData);
+    setUser({ ...userData, role: normalizeRole(userData?.role) });
     return userData;
   };
 
@@ -71,9 +81,9 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'ADMIN',
-    isStaff: ['ADMIN', 'RECEPTION', 'STAFF'].includes(user?.role),
-    isParent: user?.role === 'PARENT'
+    isAdmin: user?.role === ROLES.ADMIN,
+    isStaff: [ROLES.ADMIN, ROLES.RECEPTION, ROLES.STAFF].includes(user?.role),
+    isParent: user?.role === ROLES.PARENT
   };
 
   return (

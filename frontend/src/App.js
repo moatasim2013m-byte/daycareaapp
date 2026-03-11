@@ -19,10 +19,18 @@ import TeacherNewActivity from './pages/TeacherNewActivity';
 import TeacherMessages from './pages/TeacherMessages';
 import TeacherPickupCheck from './pages/TeacherPickupCheck';
 import ParentFeed from './pages/ParentFeed';
+import ParentDashboard from './pages/ParentDashboard';
 import ParentDailyReport from './pages/ParentDailyReport';
 import ParentMessages from './pages/ParentMessages';
 import ParentPickups from './pages/ParentPickups';
 import EventBooking from './pages/EventBooking';
+
+const ROLES = {
+  ADMIN: 'ADMIN',
+  RECEPTION: 'RECEPTION',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT'
+};
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -35,7 +43,9 @@ const ProtectedRoute = ({ children, roles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && !roles.includes(user?.role)) {
+  const userRole = user?.role?.toUpperCase?.() || user?.role;
+
+  if (roles && !roles.includes(userRole)) {
     return <Navigate to="/" replace />;
   }
 
@@ -61,7 +71,7 @@ function App() {
           <Route
             path="/checkin"
             element={
-              <ProtectedRoute roles={['ADMIN', 'MANAGER', 'CASHIER', 'ATTENDANT', 'RECEPTION', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.RECEPTION, ROLES.STAFF]}>
                 <CheckIn />
               </ProtectedRoute>
             }
@@ -70,7 +80,7 @@ function App() {
           <Route
             path="/pos"
             element={
-              <ProtectedRoute roles={['ADMIN', 'MANAGER', 'CASHIER', 'RECEPTION', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.RECEPTION, ROLES.STAFF]}>
                 <POS />
               </ProtectedRoute>
             }
@@ -79,7 +89,7 @@ function App() {
           <Route
             path="/users"
             element={
-              <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
+              <ProtectedRoute roles={[ROLES.ADMIN]}>
                 <Users />
               </ProtectedRoute>
             }
@@ -88,7 +98,7 @@ function App() {
           <Route
             path="/branches"
             element={
-              <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
+              <ProtectedRoute roles={[ROLES.ADMIN]}>
                 <Branches />
               </ProtectedRoute>
             }
@@ -106,7 +116,7 @@ function App() {
           <Route
             path="/events"
             element={
-              <ProtectedRoute roles={['ADMIN', 'MANAGER', 'RECEPTION', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.RECEPTION, ROLES.STAFF]}>
                 <EventBooking />
               </ProtectedRoute>
             }
@@ -134,7 +144,7 @@ function App() {
           <Route
             path="/teacher/today"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherToday />
               </ProtectedRoute>
             }
@@ -143,7 +153,7 @@ function App() {
           <Route
             path="/teacher/attendance"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherAttendance />
               </ProtectedRoute>
             }
@@ -152,7 +162,7 @@ function App() {
           <Route
             path="/teacher/child/:childId/log"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherChildLog />
               </ProtectedRoute>
             }
@@ -161,7 +171,7 @@ function App() {
           <Route
             path="/teacher/activity/new"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherNewActivity />
               </ProtectedRoute>
             }
@@ -170,7 +180,7 @@ function App() {
           <Route
             path="/teacher/messages"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherMessages />
               </ProtectedRoute>
             }
@@ -179,7 +189,7 @@ function App() {
           <Route
             path="/teacher/pickup-check"
             element={
-              <ProtectedRoute roles={['ADMIN', 'STAFF']}>
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <TeacherPickupCheck />
               </ProtectedRoute>
             }
@@ -189,7 +199,7 @@ function App() {
           <Route
             path="/parent/dashboard"
             element={
-              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+              <ProtectedRoute roles={[ROLES.PARENT, ROLES.ADMIN]}>
                 <ParentDashboard />
               </ProtectedRoute>
             }
@@ -198,7 +208,7 @@ function App() {
           <Route
             path="/parent/feed"
             element={
-              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+              <ProtectedRoute roles={[ROLES.PARENT, ROLES.ADMIN]}>
                 <ParentFeed />
               </ProtectedRoute>
             }
@@ -207,7 +217,7 @@ function App() {
           <Route
             path="/parent/daily-report"
             element={
-              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+              <ProtectedRoute roles={[ROLES.PARENT, ROLES.ADMIN]}>
                 <ParentDailyReport />
               </ProtectedRoute>
             }
@@ -216,7 +226,7 @@ function App() {
           <Route
             path="/parent/messages"
             element={
-              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+              <ProtectedRoute roles={[ROLES.PARENT, ROLES.ADMIN]}>
                 <ParentMessages />
               </ProtectedRoute>
             }
@@ -225,7 +235,7 @@ function App() {
           <Route
             path="/parent/pickups"
             element={
-              <ProtectedRoute roles={['PARENT', 'ADMIN']}>
+              <ProtectedRoute roles={[ROLES.PARENT, ROLES.ADMIN]}>
                 <ParentPickups />
               </ProtectedRoute>
             }
