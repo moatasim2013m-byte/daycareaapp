@@ -22,7 +22,7 @@ import ParentFeed from './pages/ParentFeed';
 import ParentDailyReport from './pages/ParentDailyReport';
 import ParentMessages from './pages/ParentMessages';
 import ParentPickups from './pages/ParentPickups';
-import ParentDashboard from './pages/ParentDashboard';
+import EventBooking from './pages/EventBooking';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -99,6 +99,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Zones />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/events"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'MANAGER', 'RECEPTION', 'STAFF']}>
+                <EventBooking />
               </ProtectedRoute>
             }
           />

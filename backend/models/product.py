@@ -3,7 +3,18 @@ from typing import Optional, Literal
 from datetime import datetime, timezone
 import uuid
 
-ProductCategory = Literal["WALK_IN", "SUBSCRIPTION", "VISIT_PACK", "OVERTIME", "OTHER"]
+ProductCategory = Literal[
+    "WALK_IN",
+    "PLAY_PASS",
+    "RETAIL",
+    "FOOD_DRINK",
+    "EVENT_PACKAGE",
+    "MEMBERSHIP",
+    "SUBSCRIPTION",
+    "VISIT_PACK",
+    "OVERTIME",
+    "OTHER",
+]
 
 class ProductCreate(BaseModel):
     name_ar: str
@@ -15,6 +26,7 @@ class ProductCreate(BaseModel):
     duration_hours: Optional[float] = None  # For walk-in products
     visits_included: Optional[int] = None   # For visit packs
     validity_days: Optional[int] = None     # For subscriptions
+    tax_rate: float = 0.16
 
 
 class Product(BaseModel):
@@ -30,6 +42,7 @@ class Product(BaseModel):
     duration_hours: Optional[float] = None
     visits_included: Optional[int] = None
     validity_days: Optional[int] = None
+    tax_rate: float = 0.16
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -48,6 +61,7 @@ class ProductResponse(BaseModel):
     duration_hours: Optional[float] = None
     visits_included: Optional[int] = None
     validity_days: Optional[int] = None
+    tax_rate: float
     is_active: bool
 
 
@@ -68,10 +82,40 @@ WALK_IN_2H = {
     "duration_hours": 2.0
 }
 
+PLAY_PASS_DAY = {
+    "name_ar": "تذكرة لعب يومية",
+    "name_en": "Daily Play Pass",
+    "category": "PLAY_PASS",
+    "price": 12.0,
+    "duration_hours": 3.0,
+}
+
+SOCKS = {
+    "name_ar": "جوارب مانعة للانزلاق",
+    "name_en": "Grip Socks",
+    "category": "RETAIL",
+    "price": 3.5,
+}
+
+FOOD_DRINK_COMBO = {
+    "name_ar": "وجبة + مشروب للأطفال",
+    "name_en": "Kids Meal + Drink",
+    "category": "FOOD_DRINK",
+    "price": 6.0,
+}
+
+EVENT_BIRTHDAY = {
+    "name_ar": "باقة حفلة عيد ميلاد",
+    "name_en": "Birthday Event Package",
+    "category": "EVENT_PACKAGE",
+    "price": 180.0,
+    "duration_hours": 2.0,
+}
+
 MONTHLY_ALL_ACCESS = {
     "name_ar": "اشتراك شهري شامل",
     "name_en": "Monthly All-Access",
-    "category": "SUBSCRIPTION",
+    "category": "MEMBERSHIP",
     "price": 200.0,
     "validity_days": 30,
     "description_ar": "دخول الحضانة + الرمل + 2 ساعة يومياً في بيكابو (7ص-5م)",
@@ -81,7 +125,7 @@ MONTHLY_ALL_ACCESS = {
 HALF_DAY_MORNING = {
     "name_ar": "اشتراك نصف يوم صباحي",
     "name_en": "Half-Day Morning",
-    "category": "SUBSCRIPTION",
+    "category": "MEMBERSHIP",
     "price": 149.0,
     "validity_days": 30,
     "description_ar": "دخول الحضانة + الرمل (7ص-2م)",
@@ -91,7 +135,7 @@ HALF_DAY_MORNING = {
 HALF_DAY_EVENING = {
     "name_ar": "اشتراك نصف يوم مسائي",
     "name_en": "Half-Day Evening",
-    "category": "SUBSCRIPTION",
+    "category": "MEMBERSHIP",
     "price": 149.0,
     "validity_days": 30,
     "description_ar": "دخول الحضانة + الرمل (12م-7م)",
@@ -122,6 +166,10 @@ OVERTIME_FEE = {
 DEFAULT_PRODUCTS = [
     WALK_IN_1H,
     WALK_IN_2H,
+    PLAY_PASS_DAY,
+    SOCKS,
+    FOOD_DRINK_COMBO,
+    EVENT_BIRTHDAY,
     MONTHLY_ALL_ACCESS,
     HALF_DAY_MORNING,
     HALF_DAY_EVENING,
