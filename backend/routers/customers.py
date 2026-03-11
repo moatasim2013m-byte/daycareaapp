@@ -46,6 +46,7 @@ async def list_customers(
     branch_id: Optional[str] = None,
     status_filter: Optional[str] = None,
     search: Optional[str] = None,
+    household_id: Optional[str] = None,
     limit: int = 50,
     user: dict = Security(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
@@ -64,6 +65,9 @@ async def list_customers(
     if status_filter:
         query["status"] = status_filter
     
+    if household_id:
+        query["household_id"] = household_id
+
     # Search by name or card
     if search:
         query["$or"] = [
@@ -148,6 +152,7 @@ async def register_customer(
         child_notes=customer_data.child_notes,
         guardian=guardian,
         branch_id=customer_data.branch_id,
+        household_id=customer_data.household_id,
         notes=customer_data.notes
     )
     
@@ -291,6 +296,8 @@ async def update_customer(
         update_data["child_notes"] = updates.child_notes
     if updates.guardian:
         update_data["guardian"] = normalize_guardian_contacts(updates.guardian).model_dump()
+    if updates.household_id is not None:
+        update_data["household_id"] = updates.household_id
     if updates.notes is not None:
         update_data["notes"] = updates.notes
     if updates.status:

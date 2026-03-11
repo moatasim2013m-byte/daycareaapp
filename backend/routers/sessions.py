@@ -10,7 +10,7 @@ from models.order import Order, OrderItem
 from models.pricing_rule import PricingRule
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
-from services.pricing_service import calculateSessionPrice
+from services.event_logger import eventLogger
 from datetime import datetime, timezone, timedelta, time
 import random
 import math
@@ -383,6 +383,22 @@ async def check_in(
             
             await db.orders.insert_one(order_dict)
             order_id = order.order_id
+
+            await eventLogger.log(
+                db,
+                "ORDER_CREATED",
+                {
+                    "actorType": "staff",
+                    "actorId": user.get("user_id"),
+                    "orderId": order_id,
+                    "metadata": {
+                        "source": "session_walk_in",
+                        "child_id": request.child_id,
+                        "guardian_id": request.guardian_id,
+                        "total_amount": price,
+                    },
+                },
+            )
     
     # Create session
     planned_end = now + timedelta(minutes=included_minutes)
@@ -424,6 +440,24 @@ async def check_in(
             "type": session_type,
             "included_minutes": included_minutes
         }
+    )
+
+    await eventLogger.log(
+        db,
+        "SESSION_START",
+        {
+            "actorType": "staff",
+            "actorId": user.get("user_id"),
+            "sessionId": session.session_id,
+            "orderId": order_id,
+            "metadata": {
+                "child_id": request.child_id,
+                "guardian_id": request.guardian_id,
+                "session_type": session_type,
+                "area": request.area,
+                "included_minutes": included_minutes,
+            },
+        },
     )
     
     response = SessionResponse(**session.model_dump())
