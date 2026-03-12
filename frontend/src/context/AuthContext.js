@@ -3,7 +3,7 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
-const ROLES = {
+export const ROLES = {
   ADMIN: 'ADMIN',
   RECEPTION: 'RECEPTION',
   STAFF: 'STAFF',

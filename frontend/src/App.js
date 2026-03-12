@@ -1,7 +1,7 @@
 import React from 'react';
 import '@/App.css';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, ROLES, useAuth } from './context/AuthContext';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -25,12 +25,6 @@ import ParentMessages from './pages/ParentMessages';
 import ParentPickups from './pages/ParentPickups';
 import EventBooking from './pages/EventBooking';
 
-const ROLES = {
-  ADMIN: 'ADMIN',
-  RECEPTION: 'RECEPTION',
-  STAFF: 'STAFF',
-  PARENT: 'PARENT'
-};
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user, loading } = useAuth();
