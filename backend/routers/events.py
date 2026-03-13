@@ -13,6 +13,7 @@ from models.event_booking import (
     EventCancelRequest,
     EventResponse,
 )
+from services.notification_service import maybe_send_whatsapp_notification
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
@@ -24,14 +25,19 @@ def get_db():
 
 
 async def build_event_response(db: AsyncIOMotorDatabase, event_doc: dict) -> EventResponse:
-    booked_count = await db.event_registrations.count_documents(
-        {"event_id": event_doc["id"], "status": "booked"}
-    )
+    bookings = await db.event_registrations.find(
+        {"event_id": event_doc["id"], "status": "booked"},
+        {"_id": 0, "customer_id": 1},
+    ).to_list(500)
+    booked_customers = [booking.get("customer_id") for booking in bookings if booking.get("customer_id")]
+    booked_count = len(booked_customers)
     remaining_capacity = max(event_doc["capacity"] - booked_count, 0)
     return EventResponse(
         **event_doc,
         bookedCount=booked_count,
+        usedCapacity=booked_count,
         remainingCapacity=remaining_capacity,
+        bookedCustomers=booked_customers,
     )
 
 
@@ -41,7 +47,7 @@ async def create_event(
     user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    event = EventBooking(**payload.model_dump(by_alias=True), customerId=user.get("user_id"))
+    event = EventBooking(**payload.model_dump(by_alias=True), customerId=payload.customer_id or user.get("user_id"))
     event_doc = event.model_dump(by_alias=False)
     event_doc["date"] = event_doc["date"].isoformat()
     event_doc["created_at"] = event_doc["created_at"].isoformat()
@@ -60,7 +66,9 @@ async def list_events(
     user: dict = Depends(get_current_user),
 ):
     query = {}
-    if branch_id:
+    if user.get("role") == "PARENT":
+        query["customer_id"] = user.get("user_id")
+    elif branch_id:
         query["branch_id"] = branch_id
     elif user.get("role") != "ADMIN" and user.get("branch_id"):
         query["branch_id"] = user["branch_id"]
@@ -99,6 +107,9 @@ async def book_event(
         await db.events.update_one({"id": payload.event_id}, {"$set": {"status": "full", "updated_at": datetime.utcnow().isoformat()}})
         raise HTTPException(status_code=400, detail="Event has reached capacity")
 
+    if event.get("status") == "full":
+        await db.events.update_one({"id": payload.event_id}, {"$set": {"status": "scheduled", "updated_at": datetime.utcnow().isoformat()}})
+
     existing = await db.event_registrations.find_one(
         {"event_id": payload.event_id, "customer_id": payload.customer_id, "status": "booked"}
     )
@@ -118,6 +129,15 @@ async def book_event(
     )
     if latest_count >= event["capacity"]:
         await db.events.update_one({"id": payload.event_id}, {"$set": {"status": "full", "updated_at": datetime.utcnow().isoformat()}})
+
+    await maybe_send_whatsapp_notification(
+        db,
+        entity_type="EVENT",
+        entity_id=payload.event_id,
+        action="BOOKING_CONFIRMED",
+        after_state={"guardian_id": payload.customer_id},
+        notes=f"{event.get('title', 'Event')} on {event.get('date')}",
+    )
 
     return {"success": True, "message": "Booking confirmed", "bookingId": booking.id}
 
