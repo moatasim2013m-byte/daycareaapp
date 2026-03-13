@@ -162,11 +162,33 @@ async def cancel_event_booking(
             raise HTTPException(status_code=404, detail="Booking not found")
 
         await db.events.update_one({"id": payload.event_id}, {"$set": {"status": "scheduled", "updated_at": now}})
+        await log_audit(
+            db, "EVENT", payload.event_id, "STATUS_UPDATED",
+            user.get("user_id", "SYSTEM"), user.get("role", "SYSTEM"),
+            after_state={
+                "user_id": user.get("user_id"),
+                "event_title": event.get("title"),
+                "event_date": event.get("date"),
+                "event_status": "scheduled",
+            },
+            notes="Event booking cancelled",
+        )
         return {"success": True, "message": "Booking cancelled"}
 
     await db.events.update_one({"id": payload.event_id}, {"$set": {"status": "cancelled", "updated_at": now}})
     await db.event_registrations.update_many(
         {"event_id": payload.event_id, "status": "booked"},
         {"$set": {"status": "cancelled", "updated_at": now, "cancelled_by": user.get("user_id")}},
+    )
+    await log_audit(
+        db, "EVENT", payload.event_id, "STATUS_UPDATED",
+        user.get("user_id", "SYSTEM"), user.get("role", "SYSTEM"),
+        after_state={
+            "user_id": user.get("user_id"),
+            "event_title": event.get("title"),
+            "event_date": event.get("date"),
+            "event_status": "cancelled",
+        },
+        notes="Event cancelled",
     )
     return {"success": True, "message": "Event cancelled"}

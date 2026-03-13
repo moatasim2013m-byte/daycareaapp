@@ -39,4 +39,9 @@ api.interceptors.response.use(
   }
 );
 
+export const fetchRecentNotifications = async (limit = 20) => {
+  const response = await api.get(`/orders/notifications/recent?limit=${limit}`);
+  return Array.isArray(response?.data) ? response.data : [];
+};
+
 export default api;

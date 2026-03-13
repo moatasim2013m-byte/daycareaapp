@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { resolveCachedChildContext } from '../utils/childContext';
+import { fetchRecentNotifications } from '../services/api';
 
 const parseCachedList = (raw) => {
   if (!raw) return [];
@@ -57,6 +58,7 @@ const ParentMessages = () => {
   const [childId, setChildId] = useState('1');
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const endOfMessagesRef = useRef(null);
 
   useEffect(() => {
@@ -69,6 +71,19 @@ const ParentMessages = () => {
   useEffect(() => {
     setMessages(readThread(`messagesThread:${childId}`));
   }, [childId]);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const rows = await fetchRecentNotifications(15);
+        setNotifications(rows.filter((item) => item?.message && item?.status === 'SENT'));
+      } catch {
+        setNotifications([]);
+      }
+    };
+
+    loadNotifications();
+  }, []);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -119,6 +134,20 @@ const ParentMessages = () => {
               placeholder="1"
             />
           </div>
+
+          {notifications.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-800">آخر إشعارات الحضانة</p>
+              <div className="mt-2 space-y-2">
+                {notifications.slice(0, 5).map((item, index) => (
+                  <div key={`${item.created_at || index}`} className="rounded-xl bg-white px-3 py-2 text-sm text-gray-700">
+                    <p>{item.message}</p>
+                    <p className="mt-1 text-xs text-gray-500">{formatMessageTimestamp(item.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto rounded-2xl bg-orange-50/50 p-3">
             {messages.length === 0 ? (
