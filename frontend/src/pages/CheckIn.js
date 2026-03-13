@@ -46,6 +46,8 @@ const CheckIn = () => {
   const [assignedWristband, setAssignedWristband] = useState(null);
   const [scanWristbandCode, setScanWristbandCode] = useState('');
   const [wristbandScanResult, setWristbandScanResult] = useState(null);
+  const [wristbandError, setWristbandError] = useState('');
+  const [wristbandLookup, setWristbandLookup] = useState(null);
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -269,7 +271,9 @@ const CheckIn = () => {
 
   // Format time
   const formatTime = (dateStr) => {
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -302,6 +306,7 @@ const CheckIn = () => {
   const handleAssignWristband = async () => {
     if (!assignSessionId || !selectedBranch) return;
 
+    setWristbandError('');
     setLoading(true);
     try {
       const selectedSession = activeSessions.find((session) => session.session_id === assignSessionId);
@@ -311,30 +316,56 @@ const CheckIn = () => {
         child_id: selectedSession?.customer_id || null,
       });
       setAssignedWristband(response.data);
+      setWristbandLookup(response.data);
       setWristbandScanResult(null);
       await fetchActiveSessions();
     } catch (error) {
-      alert(error.response?.data?.detail || 'تعذر إصدار السوار');
+      setWristbandError(error.response?.data?.detail || 'تعذر إصدار السوار');
     } finally {
       setLoading(false);
     }
   };
 
   const handleScanWristband = async () => {
-    if (!scanWristbandCode.trim()) return;
+    if (!scanWristbandCode.trim()) {
+      setWristbandError('يرجى إدخال كود السوار');
+      return;
+    }
 
+    setWristbandError('');
     setLoading(true);
     try {
+      const lookupResponse = await api.get('/wristbands', {
+        params: { code: scanWristbandCode.trim() }
+      });
+      setWristbandLookup(lookupResponse.data);
+
+      if (lookupResponse.data.status === 'active') {
+        setWristbandScanResult(null);
+        setWristbandError('هذا السوار مفعل بالفعل');
+        return;
+      }
+
       const response = await api.post('/wristbands/scan', {
         code: scanWristbandCode.trim(),
       });
       setWristbandScanResult(response.data);
+      setWristbandLookup(response.data);
       await fetchActiveSessions();
     } catch (error) {
-      alert(error.response?.data?.detail || 'تعذر تفعيل السوار');
+      setWristbandScanResult(null);
+      setWristbandLookup(null);
+      setWristbandError(error.response?.data?.detail || 'تعذر تفعيل السوار');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSessionActivationLabel = (session) => {
+    if (session?.session_active) {
+      return 'نشطة';
+    }
+    return 'بانتظار التفعيل';
   };
 
   return (
@@ -643,13 +674,20 @@ const CheckIn = () => {
                   ))}
                 </select>
                 <Button onClick={handleAssignWristband} disabled={loading || !assignSessionId} className="w-full">
-                  Assign wristband
+                  تعيين سوار
                 </Button>
 
                 {assignedWristband && (
                   <div className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                    <p className="text-sm">Code: <strong>{assignedWristband.code}</strong></p>
+                    <p className="text-sm">الكود: <strong>{assignedWristband.code}</strong></p>
+                    <p className="text-xs text-gray-600">الحالة: {assignedWristband.status || 'issued'}</p>
                     <img src={assignedWristband.qr_code_url} alt="Wristband QR" className="w-40 h-40 mx-auto" />
+                  </div>
+                )}
+
+                {wristbandError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {wristbandError}
                   </div>
                 )}
               </CardContent>
@@ -667,14 +705,22 @@ const CheckIn = () => {
                   onChange={(event) => setScanWristbandCode(event.target.value)}
                 />
                 <Button onClick={handleScanWristband} disabled={loading || !scanWristbandCode.trim()} className="w-full">
-                  Activate session
+                  تفعيل السوار
                 </Button>
+
+                {wristbandLookup && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+                    <p>الجلسة: <strong>{wristbandLookup.session_id || '-'}</strong></p>
+                    <p>حالة السوار: <strong>{wristbandLookup.status || '-'}</strong></p>
+                    <p>وقت التفعيل: <strong>{wristbandLookup.activated_at ? formatTime(wristbandLookup.activated_at) : 'غير مفعل'}</strong></p>
+                  </div>
+                )}
 
                 {wristbandScanResult && (
                   <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
                     <p>تم تفعيل الجلسة بنجاح</p>
-                    <p>Session: {wristbandScanResult.session_id}</p>
-                    <p>Status: {wristbandScanResult.status}</p>
+                    <p>الجلسة: {wristbandScanResult.session_id}</p>
+                    <p>الحالة: {wristbandScanResult.status}</p>
                   </div>
                 )}
               </CardContent>
