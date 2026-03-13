@@ -13,6 +13,29 @@ def get_db():
     return db
 
 
+
+
+def _normalize_household_id(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+async def _ensure_household_exists(db: AsyncIOMotorDatabase, household_id: Optional[str]) -> Optional[str]:
+    normalized = _normalize_household_id(household_id)
+    if not normalized:
+        return None
+
+    existing = await db.households.find_one({"household_id": normalized}, {"_id": 0, "household_id": 1})
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="الأسرة المرتبطة غير موجودة"
+        )
+    return normalized
+
+
 def calculate_age(birth_date: date) -> int:
     """Calculate age in years from birth date"""
     today = date.today()
@@ -62,10 +85,12 @@ async def create_child(
     # For parents, always use their own user_id as guardian_id
     guardian_id = user["user_id"]
     
+    household_id = await _ensure_household_exists(db, child_data.household_id)
+
     child = Child(
         guardian_id=guardian_id,
         full_name=child_data.full_name,
-        household_id=child_data.household_id,
+        household_id=household_id,
         birth_date=child_data.birth_date,
         gender=child_data.gender,
         allergies=child_data.allergies,
@@ -138,12 +163,12 @@ async def update_child(
         )
     
     update_data = {}
+    if updates.household_id is not None:
+        update_data["household_id"] = await _ensure_household_exists(db, updates.household_id)
     if updates.full_name:
         update_data["full_name"] = updates.full_name
     if updates.birth_date:
         update_data["birth_date"] = updates.birth_date.isoformat()
-    if updates.household_id is not None:
-        update_data["household_id"] = updates.household_id
     if updates.gender is not None:
         update_data["gender"] = updates.gender
     if updates.allergies is not None:
@@ -189,9 +214,12 @@ async def create_child_by_staff(
             detail="ولي الأمر غير موجود"
         )
     
+    household_id = await _ensure_household_exists(db, child_data.household_id)
+
     child = Child(
         guardian_id=guardian_id,
         full_name=child_data.full_name,
+        household_id=household_id,
         birth_date=child_data.birth_date,
         gender=child_data.gender,
         allergies=child_data.allergies,

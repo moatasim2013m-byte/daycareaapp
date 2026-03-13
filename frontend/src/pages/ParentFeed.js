@@ -28,15 +28,15 @@ const looksLikeImage = (url) => {
 const ParentFeed = () => {
   const today = getToday();
 
-  const [childId, setChildId] = useState('1');
-  const [roomId, setRoomId] = useState('1');
+  const [childId, setChildId] = useState('');
+  const [roomId, setRoomId] = useState('');
   const [feed, setFeed] = useState([]);
 
   useEffect(() => {
     const context = resolveCachedChildContext();
     if (!context) return;
 
-    setChildId(context.childId);
+    setChildId(context.childId || '');
 
     if (context.roomId) {
       setRoomId(context.roomId);
@@ -46,7 +46,7 @@ const ParentFeed = () => {
   const mergedFeed = useMemo(() => {
     const roomKeyPrimary = `activityFeedRoom:${today}`;
     const roomKeyFallback = `activityFeed:${today}`;
-    const childKey = `activityFeedChild:${childId}:${today}`;
+    const childKey = childId ? `activityFeedChild:${childId}:${today}` : '';
 
     const matchesRoomContext = (entry) => {
       const entryRoomId = entry?.roomId ?? entry?.room_id ?? entry?.classroomId ?? entry?.classroom_id;
@@ -110,8 +110,8 @@ const ParentFeed = () => {
               <Input
                 id="feed-child-id"
                 value={childId}
-                onChange={(e) => setChildId(e.target.value || '1')}
-                placeholder="1"
+                onChange={(e) => setChildId(e.target.value || '')}
+                placeholder="child-1"
               />
             </div>
             <div className="space-y-2">
@@ -119,13 +119,13 @@ const ParentFeed = () => {
               <Input
                 id="feed-room-id"
                 value={roomId}
-                onChange={(e) => setRoomId(e.target.value || '1')}
-                placeholder="1"
+                onChange={(e) => setRoomId(e.target.value || '')}
+                placeholder="room-a"
               />
             </div>
             <p className="text-xs text-gray-500 md:col-span-2">
               التاريخ الحالي: {today} — يتم تحميل منشورات الغرفة من activityFeedRoom:{today} مع fallback إلى activityFeed:{today}
-              ومنشورات الطفل من activityFeedChild:{childId}:{today}
+              ومنشورات الطفل من activityFeedChild:{childId}:{today} عند توفر childId
             </p>
           </CardContent>
         </Card>
