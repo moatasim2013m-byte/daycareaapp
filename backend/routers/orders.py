@@ -114,6 +114,20 @@ async def list_orders(
     return result
 
 
+
+
+@router.get("/notifications/recent", response_model=List[dict])
+async def list_recent_notifications(
+    limit: int = 20,
+    user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    query = {}
+    if user.get("role") == "PARENT":
+        query["recipient_user_id"] = user.get("user_id")
+
+    docs = await db.notification_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return docs
 @router.post("", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order_data: OrderCreate,

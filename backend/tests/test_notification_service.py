@@ -80,7 +80,9 @@ def test_unsupported_event_does_not_send(monkeypatch):
 
     assert event is None
     assert called["value"] is False
-    assert db.notification_logs.inserted == []
+    assert len(db.notification_logs.inserted) == 1
+    assert db.notification_logs.inserted[0]["status"] == "SKIPPED"
+    assert db.notification_logs.inserted[0]["reason"] == "UNSUPPORTED_TRIGGER"
 
 
 def test_log_audit_triggers_notification_pipeline(monkeypatch):
