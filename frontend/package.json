@@ -58,7 +58,9 @@
   },
   "scripts": {
     "build": "craco build",
-    "start": "craco start",
+    "gcp-build": "npm run build",
+    "start": "serve -s build -l ${PORT:-8080}",
+    "start:dev": "craco start",
     "start:cloudrun": "serve -s build -l ${PORT:-8080}",
     "test": "craco test"
   },

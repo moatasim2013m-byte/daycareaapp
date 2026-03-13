@@ -5,22 +5,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
 
 const readArrayFromStorage = (key) => {
   if (!key) return [];
@@ -34,6 +22,23 @@ const readArrayFromStorage = (key) => {
   }
 };
 
+const readObjectFromStorage = (key) => {
+  if (!key) return null;
+
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 const looksLikeImage = (url) => /(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?.*)?$/i.test((url || '').trim());
 
 const LOG_BADGES = {
@@ -42,6 +47,13 @@ const LOG_BADGES = {
   DIAPER: 'حفاض',
   MOOD: 'مزاج',
   NOTE: 'ملاحظة',
+};
+
+const ATTENDANCE_LABELS = {
+  PRESENT: 'حاضر',
+  ABSENT: 'غائب',
+  LATE: 'متأخر',
+  PICKED_UP: 'انصرف',
 };
 
 const formatLogSummary = (log) => {
@@ -72,26 +84,19 @@ const formatLogSummary = (log) => {
   return '';
 };
 
+
 const ParentDailyReport = () => {
   const [childId, setChildId] = useState('1');
   const [needsChildInput, setNeedsChildInput] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getToday());
 
   useEffect(() => {
-    const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+    const context = resolveCachedChildContext();
 
-    for (const key of candidateKeys) {
-      const list = parseCachedList(localStorage.getItem(key));
-      if (list.length > 0) {
-        const firstChild = list[0];
-        const cachedId = firstChild?.child_id ?? firstChild?.childId ?? firstChild?.id;
-
-        if (cachedId !== undefined && cachedId !== null && String(cachedId).trim() !== '') {
-          setChildId(String(cachedId));
-          setNeedsChildInput(false);
-          return;
-        }
-      }
+    if (context?.childId) {
+      setChildId(context.childId);
+      setNeedsChildInput(false);
+      return;
     }
 
     setNeedsChildInput(true);
@@ -135,20 +140,44 @@ const ParentDailyReport = () => {
     );
   }, [childId, selectedDate]);
 
+  const attendanceSummary = useMemo(() => {
+    const context = resolveCachedChildContext(childId);
+    const roomId = context?.roomId || '1';
+
+    const attendanceKey = `attendance:${roomId}:${selectedDate}`;
+    const attendanceByChild = readObjectFromStorage(attendanceKey);
+
+    if (!attendanceByChild) {
+      return null;
+    }
+
+    const childAttendance = attendanceByChild[String(childId)];
+
+    if (!childAttendance?.status) {
+      return null;
+    }
+
+    return {
+      roomId,
+      status: childAttendance.status,
+      updatedAt: childAttendance.updatedAt,
+    };
+  }, [childId, selectedDate]);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-parent" dir="rtl">
+      <div className="peek-shell max-w-4xl">
+        <div className="peek-header peek-header--parent flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">تقرير اليوم</h1>
-            <p className="text-gray-600 mt-1">عرض سجل الطفل وأنشطة اليوم</p>
+            <p className="text-gray-600 mt-1">ملخص لطيف ليوم الطفل: حضور، سجل يومي، ونشاطات</p>
           </div>
           <Button asChild variant="outline">
             <Link to="/">العودة إلى لوحة التحكم</Link>
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {needsChildInput && (
               <div className="space-y-2">
@@ -174,26 +203,43 @@ const ParentDailyReport = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>ملخص الحضور</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">سيتم ربطه بالحضور لاحقاً</p>
+            {attendanceSummary ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge>{ATTENDANCE_LABELS[attendanceSummary.status] || attendanceSummary.status}</Badge>
+                  <span className="text-sm text-gray-500">الغرفة: {attendanceSummary.roomId}</span>
+                </div>
+                {attendanceSummary.updatedAt && (
+                  <p className="text-sm text-gray-600">
+                    آخر تحديث: {new Date(attendanceSummary.updatedAt).toLocaleTimeString('ar-JO', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-600">🌈 لا يوجد تسجيل حضور لهذا اليوم</p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>سجل اليوم</CardTitle>
           </CardHeader>
           <CardContent>
             {logs.length === 0 ? (
-              <p className="text-gray-500">لا يوجد سجلات لهذا اليوم</p>
+              <p className="text-gray-500">🌷 لا يوجد سجلات لهذا اليوم</p>
             ) : (
               <div className="space-y-3">
                 {logs.map((log) => (
-                  <div key={log.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div key={log.id} className="peek-feed-item p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <Badge>{LOG_BADGES[log.type] || 'سجل'}</Badge>
@@ -212,17 +258,17 @@ const ParentDailyReport = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>أنشطة اليوم</CardTitle>
           </CardHeader>
           <CardContent>
             {activities.length === 0 ? (
-              <p className="text-gray-500">لا يوجد أنشطة لهذا اليوم</p>
+              <p className="text-gray-500">🌷 لا يوجد أنشطة لهذا اليوم</p>
             ) : (
               <div className="space-y-3">
                 {activities.map((activity) => (
-                  <div key={`${activity.sourceKey}-${activity.id}`} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div key={`${activity.sourceKey}-${activity.id}`} className="peek-feed-item p-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <Badge variant={activity.feedType === 'CHILD' ? 'default' : 'secondary'}>

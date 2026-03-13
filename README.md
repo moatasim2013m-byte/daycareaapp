@@ -15,89 +15,91 @@ This repository contains:
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 18+ and Yarn 1.x (or npm)
+- Node.js 20 and Yarn 1.x
 - MongoDB instance (local or hosted)
 
-## Run on Google Cloud Run (recommended for hosted preview)
+## Cloud Run Readiness (backend + frontend)
 
-Because Cloud Run services do **not** share `localhost`, deploy backend and frontend as **two services** and wire the frontend to the backend URL.
+### Verified required environment variables
 
-### 0) One-time setup: create separate service accounts
+- Frontend reads backend base URL from `REACT_APP_BACKEND_URL` in `frontend/src/services/api.js`.
+- Backend reads Mongo settings from `MONGO_URL` and `DB_NAME` in `backend/server.py` (with default `DB_NAME=daycare_db` if omitted).
 
-Use separate identities so backend and frontend can have different permissions:
+### Manual inputs required
+
+Set these values before deploying:
+
+- `PROJECT_ID`: your GCP project ID
+- `REGION`: Cloud Run region (example: `us-central1`)
+- `MONGO_URL`: MongoDB connection string
+- `DB_NAME`: database name used by the backend
+
+### Deploy steps (exact order)
+
+1. Authenticate and set project/region:
 
 ```bash
+gcloud auth login
 PROJECT_ID=<YOUR_GCP_PROJECT_ID>
 REGION=<YOUR_REGION>
-DEPLOYER=<YOUR_USER_OR_CICD_SA_EMAIL>
-
 gcloud config set project "$PROJECT_ID"
-
-gcloud iam service-accounts create daycareaapp-backend-sa \
-  --display-name="DaycareApp Backend Cloud Run SA"
-
-gcloud iam service-accounts create daycareaapp-frontend-sa \
-  --display-name="DaycareApp Frontend Cloud Run SA"
 ```
 
-Allow your deployer identity to attach those runtime service accounts during `gcloud run deploy`:
-
-```bash
-gcloud iam service-accounts add-iam-policy-binding \
-  daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --member="serviceAccount:${DEPLOYER}" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud iam service-accounts add-iam-policy-binding \
-  daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --member="serviceAccount:${DEPLOYER}" \
-  --role="roles/iam.serviceAccountUser"
-```
-
-> If deploying from your local user account instead of CI, use:
-> `--member="user:<YOUR_GOOGLE_ACCOUNT_EMAIL>"`.
-
-If backend uses Secret Manager for `MONGO_URL`, grant only backend runtime SA access:
-
-```bash
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-```
-
-### 1) Deploy backend service
+2. Deploy backend from source with required runtime env vars:
 
 ```bash
 gcloud run deploy daycareaapp-backend \
   --source ./backend \
   --region "$REGION" \
   --allow-unauthenticated \
-  --service-account daycareaapp-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=daycareaapp"
+  --set-env-vars "MONGO_URL=<YOUR_MONGO_URL>,DB_NAME=<YOUR_DB_NAME>"
 ```
 
-After deploy, copy the backend HTTPS URL, for example:
+3. Copy backend URL from deploy output (example: `https://daycareaapp-backend-xxxxx-uc.a.run.app`).
 
-`https://daycareaapp-backend-xxxxx-uc.a.run.app`
-
-### 2) Deploy frontend service (pointing to backend)
+4. Deploy frontend from source and inject backend URL at build time:
 
 ```bash
 gcloud run deploy daycareaapp-frontend \
   --source ./frontend \
   --region "$REGION" \
   --allow-unauthenticated \
-  --service-account daycareaapp-frontend-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-build-env-vars "REACT_APP_BACKEND_URL=https://daycareaapp-backend-xxxxx-uc.a.run.app"
 ```
 
-### 3) Verify Cloud Run
+   Frontend source deploy uses buildpacks with `gcp-build` (`npm run build`) and starts on Cloud Run using `serve -s build -l $PORT` on port `8080`.
 
-- Backend health: `GET https://<backend-url>/api/health`
-- Frontend: open `https://<frontend-url>` and confirm API calls succeed.
+   If you run a manual Docker build for the frontend, ensure `-f` points to the Dockerfile file path (not the `frontend` directory), for example:
 
-> Important: do **not** use `http://localhost:8000` or `http://localhost:3000` in Cloud Run settings.
+```bash
+docker build \
+  -t <frontend-image> \
+  -f frontend/Dockerfile \
+  .
+```
 
+5. Verify:
+
+- `GET https://<backend-url>/api/health`
+- Open `https://<frontend-url>` and confirm API calls succeed.
+
+> Cloud Run services cannot call each other over `localhost`; always use the deployed backend HTTPS URL in `REACT_APP_BACKEND_URL`.
+
+
+## Backend vs Frontend API Status (Current)
+
+A current audit of frontend API usage vs backend implementation is documented in:
+
+- `docs/current_status.md`
+- `API_CONTRACT.md`
+
+Snapshot:
+
+- All endpoints currently called via `frontend/src/services/api.js` consumers are implemented in backend routes.
+- Several parent/teacher experience pages are still frontend-only MVP flows backed by browser `localStorage` (not server APIs yet).
+- Backlog API surfaces from older planning docs (for example auth refresh/logout and CRM/forms modules) are not blocking current wired screens but remain future backend work.
+
+---
 ## Parent Help Center Content
 
 - Consolidated parent onboarding + bus tracking article: `docs/illumine_parents_guide.md`
@@ -168,7 +170,7 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 
 ```bash
 cd frontend
-yarn start
+yarn start:dev
 ```
 
 ### 4) Verify frontend
@@ -184,6 +186,7 @@ If you're using Cloud Run (or Codespaces), open the generated HTTPS frontend URL
 ## Onboarding Guides
 
 - Step 6/7: [Set Up Forms & Generate Reports](docs/onboarding/step-6-forms-and-reports.md)
+- Cloud Run login troubleshooting (admin seed): [docs/login-admin-seed-troubleshooting.md](docs/login-admin-seed-troubleshooting.md)
 
 ---
 

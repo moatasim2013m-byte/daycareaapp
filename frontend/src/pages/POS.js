@@ -57,6 +57,12 @@ const POS = () => {
   const [processing, setProcessing] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [openOvertimeOrders, setOpenOvertimeOrders] = useState([]);
+
+  const toSafeNumber = (value) => {
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  };
 
   // Fetch branches
   useEffect(() => {
@@ -94,6 +100,33 @@ const POS = () => {
       }
     };
     fetchProducts();
+  }, [selectedBranch]);
+
+  useEffect(() => {
+    const fetchOpenOvertimeOrders = async () => {
+      try {
+        const response = await api.get('/orders', {
+          params: {
+            status_filter: 'OPEN',
+            limit: 200,
+          },
+        });
+
+        const overtimeOrders = (Array.isArray(response.data) ? response.data : []).filter((order) => {
+          const items = Array.isArray(order?.items) ? order.items : [];
+          return items.some((item) => {
+            const text = `${item?.product_name_en || ''} ${item?.product_name_ar || ''}`.toLowerCase();
+            return text.includes('overtime') || text.includes('وقت إضافي');
+          });
+        });
+
+        setOpenOvertimeOrders(overtimeOrders);
+      } catch (error) {
+        console.error('Error loading overtime orders:', error);
+      }
+    };
+
+    fetchOpenOvertimeOrders();
   }, [selectedBranch]);
 
   // Get unique categories from products
@@ -182,13 +215,13 @@ const POS = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="peek-page peek-role-admin" dir="rtl">
       {/* Header with green accent (POS module color) */}
-      <div className="bg-white border-b-4 border-playful-green shadow-soft">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="peek-header peek-header--admin mb-4">
+        <div className="peek-shell max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-card bg-playful-green/10 flex items-center justify-center">
+              <div className="w-12 h-12 peek-card bg-playful-green/10 flex items-center justify-center">
                 <Receipt className="w-6 h-6 text-playful-green" />
               </div>
               <div>
@@ -221,7 +254,26 @@ const POS = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="peek-shell max-w-7xl">
+        {openOvertimeOrders.length > 0 && (
+          <Card className="peek-card border-2 border-playful-orange/50 bg-playful-orange/5 mb-4">
+            <CardContent className="p-4 text-sm">
+              <p className="font-semibold text-playful-orange mb-2">طلبات وقت إضافي بانتظار التحصيل</p>
+              <div className="space-y-1">
+                {openOvertimeOrders.slice(0, 3).map((order) => (
+                  <div key={order.order_id} className="flex items-center justify-between">
+                    <span>{order.order_number || order.order_id}</span>
+                    <span className="font-semibold">{toSafeNumber(order.total_amount).toFixed(2)} د.أ</span>
+                  </div>
+                ))}
+                {openOvertimeOrders.length > 3 && (
+                  <p className="text-xs text-gray-500">+{openOvertimeOrders.length - 3} طلب إضافي</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products Grid */}
           <div className="lg:col-span-2 space-y-6">
@@ -258,7 +310,7 @@ const POS = () => {
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <Card className="rounded-card">
+              <Card className="peek-card">
                 <CardContent className="p-12 text-center">
                   <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">لا توجد منتجات</h3>
@@ -275,7 +327,7 @@ const POS = () => {
                   return (
                     <Card
                       key={product.product_id}
-                      className="rounded-card border-2 border-gray-200 hover:border-playful-green hover:shadow-card transition-all duration-200 cursor-pointer group"
+                      className="peek-card border-2 border-gray-200 hover:border-playful-green hover:shadow-card transition-all duration-200 cursor-pointer group"
                       onClick={() => addToCart(product)}
                       data-testid={`product-${product.sku}`}
                     >
@@ -313,7 +365,7 @@ const POS = () => {
 
           {/* Cart */}
           <div className="lg:col-span-1">
-            <Card className="rounded-card border-2 border-gray-200 sticky top-4">
+            <Card className="peek-card border-2 border-gray-200 sticky top-4">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

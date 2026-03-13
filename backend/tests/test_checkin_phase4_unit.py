@@ -1,4 +1,4 @@
-import pytest
+import asyncio
 import sys
 from pathlib import Path
 
@@ -46,8 +46,7 @@ def test_resolve_included_minutes_prefers_session_value():
     assert _resolve_included_minutes({"payment_type": "HOURLY"}) == 120
 
 
-@pytest.mark.asyncio
-async def test_overtime_order_uses_uuid_and_customer_context():
+def test_overtime_order_uses_uuid_and_customer_context():
     db = FakeDB(product={
         "product_id": "OVERTIME_PRODUCT",
         "name_ar": "رسوم الوقت الإضافي",
@@ -58,13 +57,13 @@ async def test_overtime_order_uses_uuid_and_customer_context():
         "customer_id": "cust-123",
         "guardian": {"national_id": "guard-777"}
     }
-    order_id, order_number = await _create_overtime_order(
+    order_id, order_number = asyncio.run(_create_overtime_order(
         db=db,
         customer=customer,
         amount=3.0,
         user={"user_id": "staff-1"},
         session_id="sess-1",
-    )
+    ))
 
     assert order_id
     assert order_number.startswith("ORD-")

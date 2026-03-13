@@ -5,21 +5,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { resolveCachedChildContext } from '../utils/childContext';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
-
-const parseCachedList = (raw) => {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    if (Array.isArray(parsed?.children)) return parsed.children;
-    if (Array.isArray(parsed?.items)) return parsed.items;
-    return [];
-  } catch {
-    return [];
-  }
-};
 
 const readFeedByKey = (key) => {
   if (!key) return [];
@@ -45,25 +33,13 @@ const ParentFeed = () => {
   const [feed, setFeed] = useState([]);
 
   useEffect(() => {
-    const candidateKeys = ['children', 'childProfiles', 'daycareChildren', 'kids'];
+    const context = resolveCachedChildContext();
+    if (!context) return;
 
-    for (const key of candidateKeys) {
-      const children = parseCachedList(localStorage.getItem(key));
-      if (children.length > 0) {
-        const child = children[0];
-        const cachedChildId = child?.child_id ?? child?.childId ?? child?.id;
-        const cachedRoomId = child?.room_id ?? child?.roomId ?? child?.classroom_id ?? child?.zone_id;
+    setChildId(context.childId);
 
-        if (cachedChildId !== undefined && cachedChildId !== null) {
-          setChildId(String(cachedChildId));
-        }
-
-        if (cachedRoomId !== undefined && cachedRoomId !== null) {
-          setRoomId(String(cachedRoomId));
-        }
-
-        break;
-      }
+    if (context.roomId) {
+      setRoomId(context.roomId);
     }
   }, []);
 
@@ -112,19 +88,19 @@ const ParentFeed = () => {
   }, [mergedFeed]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
+    <div className="peek-page peek-role-parent" dir="rtl">
+      <div className="peek-shell max-w-4xl">
+        <div className="peek-header peek-header--parent flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">ولي الأمر — الخلاصة اليومية</h1>
-            <p className="text-gray-600 mt-1">تحديثات اليوم للغرفة والطفل</p>
+            <h1 className="text-2xl font-bold text-gray-900">قصة يوم طفلك</h1>
+            <p className="text-gray-600 mt-1">تحديثات دافئة من يوم الطفل داخل الحضانة</p>
           </div>
           <Button asChild variant="outline">
             <Link to="/">العودة إلى لوحة التحكم</Link>
           </Button>
         </div>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>سياق الطفل النشط</CardTitle>
           </CardHeader>
@@ -154,17 +130,17 @@ const ParentFeed = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-parent">
           <CardHeader>
             <CardTitle>الخلاصة</CardTitle>
           </CardHeader>
           <CardContent>
             {feed.length === 0 ? (
-              <p className="text-gray-500">لا توجد منشورات حالياً لهذا الطفل/اليوم.</p>
+              <div className="peek-empty text-gray-500">🌼 لا توجد منشورات حالياً لهذا الطفل/اليوم.</div>
             ) : (
               <div className="space-y-3">
                 {feed.map((entry) => (
-                  <div key={`${entry.sourceKey}-${entry.id}`} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div key={`${entry.sourceKey}-${entry.id}`} className="peek-feed-item p-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <Badge variant={entry.feedType === 'CHILD' ? 'default' : 'secondary'}>

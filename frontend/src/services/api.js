@@ -27,7 +27,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || '';
+    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -35,5 +38,10 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const fetchRecentNotifications = async (limit = 20) => {
+  const response = await api.get(`/orders/notifications/recent?limit=${limit}`);
+  return Array.isArray(response?.data) ? response.data : [];
+};
 
 export default api;

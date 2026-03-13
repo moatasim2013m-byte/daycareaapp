@@ -14,10 +14,6 @@ jest.mock('react-router-dom', () => {
   const Route = ({ element }) => element;
 
   const matchPath = (routePath, pathname) => {
-    if (pathname === '/teacher/child-log' && routePath === '/teacher/child/:childId/log') {
-      return { childId: '1' };
-    }
-
     const routeParts = routePath.split('/').filter(Boolean);
     const pathParts = pathname.split('/').filter(Boolean);
 
@@ -117,7 +113,7 @@ describe('TeacherChildLog', () => {
     jest.clearAllMocks();
   });
 
-  it('renders logs stored in localStorage', async () => {
+  it('renders title and NOTE logs stored in localStorage', async () => {
     localStorage.setItem('token', 'test');
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF', display_name: 'Test Teacher' }));
 
@@ -127,14 +123,14 @@ describe('TeacherChildLog', () => {
       JSON.stringify([
         {
           id: 'log1',
-          type: 'وجبة',
-          summary: 'تناول الغداء',
+          type: 'NOTE',
+          payload: { text: 'ملاحظة اختبار' },
           createdAt: new Date().toISOString(),
         },
       ])
     );
 
-    globalThis.window.history.pushState({}, '', '/teacher/child-log');
+    globalThis.window.history.pushState({}, '', '/teacher/child/1/log');
 
     await act(async () => {
       root.render(<App />);
@@ -142,16 +138,7 @@ describe('TeacherChildLog', () => {
       await flush();
     });
 
-    const childIdInput = container.querySelector('input[name="childId"], input#childId');
-    if (childIdInput) {
-      await act(async () => {
-        childIdInput.value = '1';
-        childIdInput.dispatchEvent(new Event('input', { bubbles: true }));
-        childIdInput.dispatchEvent(new Event('change', { bubbles: true }));
-        await flush();
-      });
-    }
-
-    expect(container.textContent).toContain('تناول الغداء');
+    expect(container.textContent).toContain('سجل الطفل');
+    expect(container.textContent).toContain('ملاحظة اختبار');
   });
 });

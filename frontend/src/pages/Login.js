@@ -15,9 +15,45 @@ const Login = () => {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDemoLogin, setShowDemoLogin] = useState(false);
   
-  const { login, register } = useAuth();
+  const { login, register, demoLogin } = useAuth();
   const navigate = useNavigate();
+
+  const handleDemoLogin = (role) => {
+    const demoProfiles = {
+      ADMIN: {
+        token: 'demo-token-admin',
+        user: {
+          id: 'demo-admin',
+          email: 'admin@demo.local',
+          display_name: 'مشرف تجريبي',
+          role: 'ADMIN'
+        }
+      },
+      STAFF: {
+        token: 'demo-token-staff',
+        user: {
+          id: 'demo-staff',
+          email: 'teacher@demo.local',
+          display_name: 'معلمة تجريبية',
+          role: 'STAFF'
+        }
+      },
+      PARENT: {
+        token: 'demo-token-parent',
+        user: {
+          id: 'demo-parent',
+          email: 'parent@demo.local',
+          display_name: 'ولي أمر تجريبي',
+          role: 'PARENT'
+        }
+      }
+    };
+
+    demoLogin(demoProfiles[role]);
+    navigate('/');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,9 +72,13 @@ const Login = () => {
       } else {
         await login(email, password);
       }
+      setShowDemoLogin(false);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'حدث خطأ');
+      if (!isRegister) {
+        setShowDemoLogin(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -147,6 +187,28 @@ const Login = () => {
               )}
             </Button>
           </form>
+
+          {showDemoLogin && !isRegister && (
+            <div className="mt-4 border border-amber-300 bg-amber-50 rounded-xl p-3 space-y-2">
+              <p className="text-amber-800 text-sm font-semibold text-center">
+                وضع تجريبي (Dev Mode)
+              </p>
+              <p className="text-amber-700 text-xs text-center">
+                فشل تسجيل الدخول من الخادم. يمكنك الدخول السريع لاستعراض الواجهة.
+              </p>
+              <div className="grid gap-2">
+                <Button type="button" variant="outline" className="w-full" onClick={() => handleDemoLogin('ADMIN')}>
+                  دخول كأدمن
+                </Button>
+                <Button type="button" variant="outline" className="w-full" onClick={() => handleDemoLogin('STAFF')}>
+                  دخول كمعلمة
+                </Button>
+                <Button type="button" variant="outline" className="w-full" onClick={() => handleDemoLogin('PARENT')}>
+                  دخول كولي أمر
+                </Button>
+              </div>
+            </div>
+          )}
           
           <div className="mt-6 text-center">
             <button

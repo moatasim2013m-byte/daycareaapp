@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -42,6 +42,12 @@ const CheckIn = () => {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [checkoutResult, setCheckoutResult] = useState(null);
+  const [assignSessionId, setAssignSessionId] = useState('');
+  const [assignedWristband, setAssignedWristband] = useState(null);
+  const [scanWristbandCode, setScanWristbandCode] = useState('');
+  const [wristbandScanResult, setWristbandScanResult] = useState(null);
+  const [wristbandError, setWristbandError] = useState('');
+  const [wristbandLookup, setWristbandLookup] = useState(null);
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -49,7 +55,12 @@ const CheckIn = () => {
     child_name: '',
     child_dob: '',
     guardian_name: '',
-    guardian_phone: ''
+    guardian_mobile: '',
+    guardian_whatsapp: '',
+    guardian_email: '',
+    child_gender: '',
+    child_allergies: '',
+    child_notes: ''
   });
 
   const cardInputRef = useRef(null);
@@ -71,14 +82,7 @@ const CheckIn = () => {
     fetchBranches();
   }, [user]);
 
-  // Fetch active sessions
-  useEffect(() => {
-    if (selectedBranch) {
-      fetchActiveSessions();
-    }
-  }, [selectedBranch]);
-
-  const fetchActiveSessions = async () => {
+  const fetchActiveSessions = useCallback(async () => {
     try {
       const response = await api.get('/checkin/active', {
         params: { branch_id: selectedBranch?.branch_id }
@@ -87,7 +91,14 @@ const CheckIn = () => {
     } catch (error) {
       console.error('Error fetching active sessions:', error);
     }
-  };
+  }, [selectedBranch]);
+
+  // Fetch active sessions
+  useEffect(() => {
+    if (selectedBranch) {
+      fetchActiveSessions();
+    }
+  }, [selectedBranch, fetchActiveSessions]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -179,7 +190,7 @@ const CheckIn = () => {
 
   // Handle registration
   const handleRegister = async () => {
-    if (!registerForm.child_name || !registerForm.child_dob || !registerForm.guardian_name) {
+    if (!registerForm.child_name || !registerForm.child_dob || !registerForm.guardian_name || !registerForm.guardian_mobile) {
       alert('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
@@ -190,15 +201,21 @@ const CheckIn = () => {
         card_number: cardNumber.trim(),
         child_name: registerForm.child_name,
         child_dob: registerForm.child_dob,
+        child_gender: registerForm.child_gender || null,
+        child_allergies: registerForm.child_allergies || null,
+        child_notes: registerForm.child_notes || null,
         guardian: {
           name: registerForm.guardian_name,
-          phone: registerForm.guardian_phone || null
+          mobile: registerForm.guardian_mobile || null,
+          phone: registerForm.guardian_mobile || null,
+          whatsapp: registerForm.guardian_whatsapp || null,
+          email: registerForm.guardian_email || null
         },
         branch_id: selectedBranch.branch_id
       });
       
       setShowRegister(false);
-      setRegisterForm({ child_name: '', child_dob: '', guardian_name: '', guardian_phone: '' });
+      setRegisterForm({ child_name: '', child_dob: '', guardian_name: '', guardian_mobile: '', guardian_whatsapp: '', guardian_email: '', child_gender: '', child_allergies: '', child_notes: '' });
       
       // Show waiver acceptance
       setScanResult({
@@ -254,30 +271,111 @@ const CheckIn = () => {
 
   // Format time
   const formatTime = (dateStr) => {
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
   };
 
   const getElapsedMinutes = (checkInTime) => {
+    if (!checkInTime) return 0;
     const start = new Date(checkInTime).getTime();
+    if (!Number.isFinite(start)) return 0;
     return Math.max(0, Math.floor((Date.now() - start) / 60000));
   };
 
+  const toSafeNumber = (value, fallback = 0) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  const getOvertimeEstimate = (overdueMinutes) => {
+    const safeOverdue = Math.max(0, toSafeNumber(overdueMinutes));
+    if (safeOverdue <= 0) return 0;
+    return Math.ceil(safeOverdue / 60) * 3;
+  };
+
   const getOverdueMeta = (session) => {
-    const elapsed = session.elapsed_minutes ?? getElapsedMinutes(session.check_in_time);
-    const included = session.included_minutes || 120;
+    const elapsed = toSafeNumber(session.elapsed_minutes, getElapsedMinutes(session.check_in_time));
+    const included = Math.max(0, toSafeNumber(session.included_minutes, 120));
     const overdue = Math.max(0, elapsed - included);
-    return { elapsed, included, overdue, isOverdue: overdue > 0 };
+    const overtimeAmount = toSafeNumber(session.overdue_amount, getOvertimeEstimate(overdue));
+    return { elapsed, included, overdue, overtimeAmount, isOverdue: overdue > 0 };
+  };
+
+  const handleAssignWristband = async () => {
+    if (!assignSessionId || !selectedBranch) return;
+
+    setWristbandError('');
+    setLoading(true);
+    try {
+      const selectedSession = activeSessions.find((session) => session.session_id === assignSessionId);
+      const response = await api.post('/wristbands/assign', {
+        session_id: assignSessionId,
+        branch_id: selectedBranch.branch_id,
+        child_id: selectedSession?.customer_id || null,
+      });
+      setAssignedWristband(response.data);
+      setWristbandLookup(response.data);
+      setWristbandScanResult(null);
+      await fetchActiveSessions();
+    } catch (error) {
+      setWristbandError(error.response?.data?.detail || 'تعذر إصدار السوار');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScanWristband = async () => {
+    if (!scanWristbandCode.trim()) {
+      setWristbandError('يرجى إدخال كود السوار');
+      return;
+    }
+
+    setWristbandError('');
+    setLoading(true);
+    try {
+      const lookupResponse = await api.get('/wristbands', {
+        params: { code: scanWristbandCode.trim() }
+      });
+      setWristbandLookup(lookupResponse.data);
+
+      if (lookupResponse.data.status === 'active') {
+        setWristbandScanResult(null);
+        setWristbandError('هذا السوار مفعل بالفعل');
+        return;
+      }
+
+      const response = await api.post('/wristbands/scan', {
+        code: scanWristbandCode.trim(),
+      });
+      setWristbandScanResult(response.data);
+      setWristbandLookup(response.data);
+      await fetchActiveSessions();
+    } catch (error) {
+      setWristbandScanResult(null);
+      setWristbandLookup(null);
+      setWristbandError(error.response?.data?.detail || 'تعذر تفعيل السوار');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSessionActivationLabel = (session) => {
+    if (session?.session_active) {
+      return 'نشطة';
+    }
+    return 'بانتظار التفعيل';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="peek-page peek-role-admin" dir="rtl">
       {/* Header */}
-      <div className="bg-white border-b-4 border-playful-blue shadow-soft">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="peek-header peek-header--admin mb-4">
+        <div className="peek-shell max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-card bg-playful-blue/10 flex items-center justify-center">
+              <div className="w-12 h-12 peek-card bg-playful-blue/10 flex items-center justify-center">
                 <Scan className="w-6 h-6 text-playful-blue" />
               </div>
               <div>
@@ -289,12 +387,12 @@ const CheckIn = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="peek-shell max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card Scan Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Scan Card */}
-            <Card className="rounded-card border-2 border-gray-200">
+            <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-playful-blue" />
@@ -327,7 +425,7 @@ const CheckIn = () => {
 
             {/* Scan Result */}
             {scanResult && (
-              <Card className={`rounded-card border-2 ${
+              <Card className={`peek-card border-2 ${
                 scanResult.status === 'READY_TO_CHECK_IN' ? 'border-playful-green' :
                 scanResult.status === 'ALREADY_CHECKED_IN' ? 'border-playful-orange' :
                 scanResult.status === 'ERROR' ? 'border-playful-red' :
@@ -476,7 +574,7 @@ const CheckIn = () => {
 
           {/* Active Sessions */}
           <div className="lg:col-span-1">
-            <Card className="rounded-card border-2 border-gray-200">
+            <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -497,7 +595,7 @@ const CheckIn = () => {
                 ) : (
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                     {activeSessions.map((session) => {
-                      const { elapsed, included, overdue, isOverdue } = getOverdueMeta(session);
+                      const { elapsed, included, overdue, overtimeAmount, isOverdue } = getOverdueMeta(session);
                       return (
                       <div
                         key={session.session_id}
@@ -510,15 +608,28 @@ const CheckIn = () => {
                             دخول: {formatTime(session.check_in_time)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            المدة: {elapsed} دقيقة
+                            الوقت المنقضي: {elapsed} دقيقة
                           </p>
                           <p className="text-xs text-gray-500">
                             الوقت المشمول: {included} دقيقة
                           </p>
+                          <p className="text-xs text-gray-500">
+                            الحالة: {isOverdue ? 'وقت إضافي' : 'ضمن الوقت'}
+                          </p>
                           {isOverdue && (
-                            <p className="text-xs text-playful-orange font-semibold">
-                              متأخر {overdue} دقيقة
-                            </p>
+                            <>
+                              <p className="text-xs text-playful-orange font-semibold">
+                                وقت إضافي {overdue} دقيقة
+                              </p>
+                              <p className="text-xs text-playful-orange font-semibold">
+                                الرسوم الحالية: {overtimeAmount.toFixed(2)} د.أ
+                              </p>
+                              {session.overtime_order_number && (
+                                <p className="text-xs text-gray-600">
+                                  طلب الوقت الإضافي: {session.overtime_order_number}
+                                </p>
+                              )}
+                            </>
                           )}
                           {session.payment_type === 'SUBSCRIPTION' && (
                             <span className="text-xs text-primary-yellow flex items-center gap-1">
@@ -542,6 +653,79 @@ const CheckIn = () => {
               </CardContent>
             </Card>
           </div>
+
+          <div className="space-y-6">
+            <Card className="peek-card border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle>سوار QR</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Label>إصدار سوار للجلسة</Label>
+                <select
+                  className="w-full border rounded-md p-2"
+                  value={assignSessionId}
+                  onChange={(event) => setAssignSessionId(event.target.value)}
+                >
+                  <option value="">اختر جلسة نشطة</option>
+                  {activeSessions.map((session) => (
+                    <option key={session.session_id} value={session.session_id}>
+                      {session.child_name || session.customer_id} - {session.session_id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+                <Button onClick={handleAssignWristband} disabled={loading || !assignSessionId} className="w-full">
+                  تعيين سوار
+                </Button>
+
+                {assignedWristband && (
+                  <div className="border rounded-lg p-3 space-y-2 bg-gray-50">
+                    <p className="text-sm">الكود: <strong>{assignedWristband.code}</strong></p>
+                    <p className="text-xs text-gray-600">الحالة: {assignedWristband.status || 'issued'}</p>
+                    <img src={assignedWristband.qr_code_url} alt="Wristband QR" className="w-40 h-40 mx-auto" />
+                  </div>
+                )}
+
+                {wristbandError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {wristbandError}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="peek-card border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle>تفعيل الجلسة عبر السوار</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Input
+                  type="text"
+                  placeholder="امسح كود السوار"
+                  value={scanWristbandCode}
+                  onChange={(event) => setScanWristbandCode(event.target.value)}
+                />
+                <Button onClick={handleScanWristband} disabled={loading || !scanWristbandCode.trim()} className="w-full">
+                  تفعيل السوار
+                </Button>
+
+                {wristbandLookup && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+                    <p>الجلسة: <strong>{wristbandLookup.session_id || '-'}</strong></p>
+                    <p>حالة السوار: <strong>{wristbandLookup.status || '-'}</strong></p>
+                    <p>وقت التفعيل: <strong>{wristbandLookup.activated_at ? formatTime(wristbandLookup.activated_at) : 'غير مفعل'}</strong></p>
+                  </div>
+                )}
+
+                {wristbandScanResult && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+                    <p>تم تفعيل الجلسة بنجاح</p>
+                    <p>الجلسة: {wristbandScanResult.session_id}</p>
+                    <p>الحالة: {wristbandScanResult.status}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
@@ -558,14 +742,14 @@ const CheckIn = () => {
             <div className="space-y-3 py-2">
               <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
                 <p>الحالة: <strong>{checkoutResult.status === 'OVERDUE' ? 'متأخر' : 'تم تسجيل الخروج'}</strong></p>
-                <p>المدة: <strong>{checkoutResult.duration_minutes || 0} دقيقة</strong></p>
-                <p>الوقت المشمول: <strong>{checkoutResult.included_minutes || 0} دقيقة</strong></p>
-                <p>الوقت الإضافي: <strong>{checkoutResult.overdue_minutes || 0} دقيقة</strong></p>
+                <p>المدة: <strong>{toSafeNumber(checkoutResult.duration_minutes)} دقيقة</strong></p>
+                <p>الوقت المشمول: <strong>{toSafeNumber(checkoutResult.included_minutes)} دقيقة</strong></p>
+                <p>الوقت الإضافي: <strong>{toSafeNumber(checkoutResult.overdue_minutes)} دقيقة</strong></p>
               </div>
 
-              {checkoutResult.overdue_amount > 0 ? (
+              {toSafeNumber(checkoutResult.overdue_amount) > 0 ? (
                 <div className="bg-playful-orange/10 border border-playful-orange/30 rounded-input p-3 text-sm space-y-1">
-                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {checkoutResult.overdue_amount} د.أ</p>
+                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {toSafeNumber(checkoutResult.overdue_amount).toFixed(2)} د.أ</p>
                   {checkoutResult.overtime_order_number && (
                     <p>رقم الطلب: <strong>{checkoutResult.overtime_order_number}</strong></p>
                   )}
@@ -644,15 +828,74 @@ const CheckIn = () => {
               </div>
               
               <div>
-                <Label>رقم الهاتف (اختياري)</Label>
+                <Label>جنس الطفل (اختياري)</Label>
+                <Input
+                  value={registerForm.child_gender}
+                  onChange={(e) => setRegisterForm({...registerForm, child_gender: e.target.value})}
+                  placeholder="ذكر / أنثى"
+                  className="mt-1 rounded-input"
+                  data-testid="child-gender-input"
+                />
+              </div>
+
+              <div>
+                <Label>رقم الجوال *</Label>
                 <Input
                   type="tel"
-                  value={registerForm.guardian_phone}
-                  onChange={(e) => setRegisterForm({...registerForm, guardian_phone: e.target.value})}
+                  value={registerForm.guardian_mobile}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_mobile: e.target.value})}
                   placeholder="+962..."
                   className="mt-1 rounded-input"
                   dir="ltr"
-                  data-testid="guardian-phone-input"
+                  data-testid="guardian-mobile-input"
+                />
+              </div>
+
+              <div>
+                <Label>واتساب (اختياري)</Label>
+                <Input
+                  type="tel"
+                  value={registerForm.guardian_whatsapp}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_whatsapp: e.target.value})}
+                  placeholder="+962..."
+                  className="mt-1 rounded-input"
+                  dir="ltr"
+                  data-testid="guardian-whatsapp-input"
+                />
+              </div>
+
+              <div>
+                <Label>البريد الإلكتروني (اختياري)</Label>
+                <Input
+                  type="email"
+                  value={registerForm.guardian_email}
+                  onChange={(e) => setRegisterForm({...registerForm, guardian_email: e.target.value})}
+                  placeholder="example@email.com"
+                  className="mt-1 rounded-input"
+                  dir="ltr"
+                  data-testid="guardian-email-input"
+                />
+              </div>
+
+              <div>
+                <Label>الحساسية (اختياري)</Label>
+                <Input
+                  value={registerForm.child_allergies}
+                  onChange={(e) => setRegisterForm({...registerForm, child_allergies: e.target.value})}
+                  placeholder="مثال: حساسية من المكسرات"
+                  className="mt-1 rounded-input"
+                  data-testid="child-allergies-input"
+                />
+              </div>
+
+              <div>
+                <Label>ملاحظات (اختياري)</Label>
+                <Input
+                  value={registerForm.child_notes}
+                  onChange={(e) => setRegisterForm({...registerForm, child_notes: e.target.value})}
+                  placeholder="ملاحظات إضافية عن الطفل"
+                  className="mt-1 rounded-input"
+                  data-testid="child-notes-input"
                 />
               </div>
             </div>
@@ -723,44 +966,6 @@ const CheckIn = () => {
               data-testid="accept-waiver-btn"
             >
               {loading ? 'جاري الحفظ...' : 'أوافق على الشروط'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(checkoutResult)} onOpenChange={(open) => !open && setCheckoutResult(null)}>
-        <DialogContent className="rounded-modal max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <LogOut className="w-6 h-6 text-playful-green" />
-              ملخص تسجيل الخروج
-            </DialogTitle>
-          </DialogHeader>
-
-          {checkoutResult && (
-            <div className="space-y-3 py-2">
-              <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
-                <p><strong>مدة الجلسة:</strong> {checkoutResult.duration_minutes || 0} دقيقة</p>
-                <p><strong>الوقت المشمول:</strong> {checkoutResult.included_minutes || 0} دقيقة</p>
-                {checkoutResult.overdue_minutes > 0 && (
-                  <p className="text-playful-orange font-semibold"><strong>وقت إضافي:</strong> {checkoutResult.overdue_minutes} دقيقة</p>
-                )}
-                <p className={checkoutResult.overdue_amount > 0 ? 'text-playful-orange font-bold' : 'text-playful-green font-bold'}>
-                  {checkoutResult.overdue_amount > 0 ? `رسوم الوقت الإضافي: ${checkoutResult.overdue_amount} د.أ` : 'لا توجد رسوم وقت إضافي'}
-                </p>
-                {checkoutResult.overtime_order_number && (
-                  <p><strong>رقم الطلب:</strong> {checkoutResult.overtime_order_number}</p>
-                )}
-                {checkoutResult.overtime_order_id && (
-                  <p className="text-xs text-gray-500"><strong>معرّف الطلب:</strong> {checkoutResult.overtime_order_id}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button onClick={() => setCheckoutResult(null)} className="w-full rounded-button bg-playful-green hover:bg-playful-green/90 text-white">
-              تم
             </Button>
           </DialogFooter>
         </DialogContent>

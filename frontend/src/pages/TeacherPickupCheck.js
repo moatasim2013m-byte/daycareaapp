@@ -1,11 +1,13 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
-const readPickups = (key) => {
+const getToday = () => new Date().toISOString().slice(0, 10);
+
+const readArray = (key) => {
   try {
     const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -17,54 +19,148 @@ const readPickups = (key) => {
 
 const TeacherPickupCheck = () => {
   const [childId, setChildId] = useState('1');
+  const [search, setSearch] = useState('');
   const [pickups, setPickups] = useState([]);
+  const [verificationLog, setVerificationLog] = useState([]);
 
-  const storageKey = useMemo(() => `authorizedPickups:${childId}`, [childId]);
+  const normalizedChildId = useMemo(() => {
+    const trimmed = String(childId ?? '').trim();
+    return trimmed || '1';
+  }, [childId]);
+
+  const pickupsKey = useMemo(
+    () => `authorizedPickups:${normalizedChildId}`,
+    [normalizedChildId]
+  );
+
+  const checksKey = useMemo(
+    () => `pickupChecks:${normalizedChildId}:${getToday()}`,
+    [normalizedChildId]
+  );
 
   useEffect(() => {
-    setPickups(readPickups(storageKey));
-  }, [storageKey]);
+    setPickups(readArray(pickupsKey));
+  }, [pickupsKey]);
+
+  useEffect(() => {
+    const sortedChecks = readArray(checksKey).sort(
+      (a, b) => new Date(b?.verifiedAt || 0).getTime() - new Date(a?.verifiedAt || 0).getTime()
+    );
+    setVerificationLog(sortedChecks);
+  }, [checksKey]);
+
+  const filteredPickups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return pickups;
+    }
+
+    return pickups.filter((item) => {
+      const name = String(item?.name || '').toLowerCase();
+      const phone = String(item?.phone || '').toLowerCase();
+      return name.includes(query) || phone.includes(query);
+    });
+  }, [pickups, search]);
+
+  const handleVerify = (person) => {
+    const event = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      childId: normalizedChildId,
+      personName: person?.name || '',
+      relation: person?.relation || '',
+      phone: person?.phone || '',
+      verifiedAt: new Date().toISOString(),
+    };
+
+    const nextLog = [event, ...verificationLog].sort(
+      (a, b) => new Date(b?.verifiedAt || 0).getTime() - new Date(a?.verifiedAt || 0).getTime()
+    );
+
+    localStorage.setItem(checksKey, JSON.stringify(nextLog));
+    setVerificationLog(nextLog);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">التحقق من الاستلام</h1>
-            <p className="text-gray-600 mt-1">تحقق سريع من الأشخاص المخولين لاستلام الطفل</p>
-          </div>
+    <div className="peek-page peek-role-teacher" dir="rtl">
+      <div className="peek-shell max-w-5xl">
+        <div className="peek-header peek-header--teacher flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">التحقق من الاستلام</h1>
           <Button asChild variant="outline">
-            <Link to="/">العودة إلى لوحة التحكم</Link>
+            <Link to="/">العودة</Link>
           </Button>
         </div>
 
-        <Card>
-          <CardContent className="pt-6 max-w-xs space-y-2">
-            <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
-            <Input
-              id="pickup-check-child-id"
-              value={childId}
-              onChange={(e) => setChildId(e.target.value || '1')}
-              placeholder="1"
-            />
+        <Card className="peek-card peek-role-panel-teacher">
+          <CardContent className="grid grid-cols-1 gap-4 pt-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="pickup-check-child-id">معرف الطفل</Label>
+              <Input
+                id="pickup-check-child-id"
+                value={childId}
+                onChange={(e) => setChildId(e.target.value || '1')}
+                placeholder="1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pickup-check-search">بحث بالاسم أو الهاتف (اختياري)</Label>
+              <Input
+                id="pickup-check-search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="اكتب الاسم أو رقم الهاتف"
+              />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="peek-card peek-role-panel-teacher">
           <CardHeader>
             <CardTitle>قائمة المخولين</CardTitle>
           </CardHeader>
           <CardContent>
-            {pickups.length === 0 ? (
-              <p className="text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</p>
+            {filteredPickups.length === 0 ? (
+              <div className="peek-empty text-gray-500">لا يوجد أشخاص مخولين لهذا الطفل</div>
             ) : (
               <div className="space-y-3">
-                {pickups.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
-                    <p className="font-semibold text-gray-900">{item.name}</p>
+                {filteredPickups.map((item, index) => (
+                  <div
+                    key={item.id || `${item.name || 'person'}-${index}`}
+                    className="rounded-2xl border border-orange-100 bg-white p-3 shadow-sm"
+                  >
+                    <p className="text-sm text-gray-700">الاسم: {item.name || '-'}</p>
                     <p className="text-sm text-gray-700">صلة القرابة: {item.relation || '-'}</p>
-                    <p className="text-sm text-gray-700">الهاتف: {item.phone}</p>
+                    <p className="text-sm text-gray-700">رقم الهاتف: {item.phone || '-'}</p>
+                    {item.createdAt ? (
+                      <p className="text-sm text-gray-700">
+                        وقت الإضافة: {new Date(item.createdAt).toLocaleString('ar-EG')}
+                      </p>
+                    ) : null}
+                    <div className="mt-3">
+                      <Button type="button" onClick={() => handleVerify(item)} className="peek-action-teacher bg-orange-500 text-white hover:bg-orange-600">
+                        تم التحقق
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="peek-card peek-role-panel-teacher">
+          <CardHeader>
+            <CardTitle>سجل تحقق اليوم</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {verificationLog.length === 0 ? (
+              <div className="peek-empty text-gray-500">لا توجد عمليات تحقق اليوم</div>
+            ) : (
+              <div className="space-y-2">
+                {verificationLog.map((item) => (
+                  <p key={item.id} className="text-sm text-gray-700">
+                    {item.personName || '-'} -{' '}
+                    {item.verifiedAt ? new Date(item.verifiedAt).toLocaleTimeString('ar-EG') : '-'}
+                  </p>
                 ))}
               </div>
             )}
