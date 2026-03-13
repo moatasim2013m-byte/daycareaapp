@@ -46,6 +46,8 @@ const CheckIn = () => {
   const [assignedWristband, setAssignedWristband] = useState(null);
   const [scanWristbandCode, setScanWristbandCode] = useState('');
   const [wristbandScanResult, setWristbandScanResult] = useState(null);
+  const [wristbandError, setWristbandError] = useState('');
+  const [wristbandLookup, setWristbandLookup] = useState(null);
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -269,25 +271,42 @@ const CheckIn = () => {
 
   // Format time
   const formatTime = (dateStr) => {
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
   };
 
   const getElapsedMinutes = (checkInTime) => {
+    if (!checkInTime) return 0;
     const start = new Date(checkInTime).getTime();
+    if (!Number.isFinite(start)) return 0;
     return Math.max(0, Math.floor((Date.now() - start) / 60000));
   };
 
+  const toSafeNumber = (value, fallback = 0) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  const getOvertimeEstimate = (overdueMinutes) => {
+    const safeOverdue = Math.max(0, toSafeNumber(overdueMinutes));
+    if (safeOverdue <= 0) return 0;
+    return Math.ceil(safeOverdue / 60) * 3;
+  };
+
   const getOverdueMeta = (session) => {
-    const elapsed = session.elapsed_minutes ?? getElapsedMinutes(session.check_in_time);
-    const included = session.included_minutes || 120;
+    const elapsed = toSafeNumber(session.elapsed_minutes, getElapsedMinutes(session.check_in_time));
+    const included = Math.max(0, toSafeNumber(session.included_minutes, 120));
     const overdue = Math.max(0, elapsed - included);
-    return { elapsed, included, overdue, isOverdue: overdue > 0 };
+    const overtimeAmount = toSafeNumber(session.overdue_amount, getOvertimeEstimate(overdue));
+    return { elapsed, included, overdue, overtimeAmount, isOverdue: overdue > 0 };
   };
 
   const handleAssignWristband = async () => {
     if (!assignSessionId || !selectedBranch) return;
 
+    setWristbandError('');
     setLoading(true);
     try {
       const selectedSession = activeSessions.find((session) => session.session_id === assignSessionId);
@@ -297,30 +316,56 @@ const CheckIn = () => {
         child_id: selectedSession?.customer_id || null,
       });
       setAssignedWristband(response.data);
+      setWristbandLookup(response.data);
       setWristbandScanResult(null);
       await fetchActiveSessions();
     } catch (error) {
-      alert(error.response?.data?.detail || 'تعذر إصدار السوار');
+      setWristbandError(error.response?.data?.detail || 'تعذر إصدار السوار');
     } finally {
       setLoading(false);
     }
   };
 
   const handleScanWristband = async () => {
-    if (!scanWristbandCode.trim()) return;
+    if (!scanWristbandCode.trim()) {
+      setWristbandError('يرجى إدخال كود السوار');
+      return;
+    }
 
+    setWristbandError('');
     setLoading(true);
     try {
+      const lookupResponse = await api.get('/wristbands', {
+        params: { code: scanWristbandCode.trim() }
+      });
+      setWristbandLookup(lookupResponse.data);
+
+      if (lookupResponse.data.status === 'active') {
+        setWristbandScanResult(null);
+        setWristbandError('هذا السوار مفعل بالفعل');
+        return;
+      }
+
       const response = await api.post('/wristbands/scan', {
         code: scanWristbandCode.trim(),
       });
       setWristbandScanResult(response.data);
+      setWristbandLookup(response.data);
       await fetchActiveSessions();
     } catch (error) {
-      alert(error.response?.data?.detail || 'تعذر تفعيل السوار');
+      setWristbandScanResult(null);
+      setWristbandLookup(null);
+      setWristbandError(error.response?.data?.detail || 'تعذر تفعيل السوار');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSessionActivationLabel = (session) => {
+    if (session?.session_active) {
+      return 'نشطة';
+    }
+    return 'بانتظار التفعيل';
   };
 
   return (
@@ -550,7 +595,7 @@ const CheckIn = () => {
                 ) : (
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                     {activeSessions.map((session) => {
-                      const { elapsed, included, overdue, isOverdue } = getOverdueMeta(session);
+                      const { elapsed, included, overdue, overtimeAmount, isOverdue } = getOverdueMeta(session);
                       return (
                       <div
                         key={session.session_id}
@@ -563,15 +608,28 @@ const CheckIn = () => {
                             دخول: {formatTime(session.check_in_time)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            المدة: {elapsed} دقيقة
+                            الوقت المنقضي: {elapsed} دقيقة
                           </p>
                           <p className="text-xs text-gray-500">
                             الوقت المشمول: {included} دقيقة
                           </p>
+                          <p className="text-xs text-gray-500">
+                            الحالة: {isOverdue ? 'وقت إضافي' : 'ضمن الوقت'}
+                          </p>
                           {isOverdue && (
-                            <p className="text-xs text-playful-orange font-semibold">
-                              متأخر {overdue} دقيقة
-                            </p>
+                            <>
+                              <p className="text-xs text-playful-orange font-semibold">
+                                وقت إضافي {overdue} دقيقة
+                              </p>
+                              <p className="text-xs text-playful-orange font-semibold">
+                                الرسوم الحالية: {overtimeAmount.toFixed(2)} د.أ
+                              </p>
+                              {session.overtime_order_number && (
+                                <p className="text-xs text-gray-600">
+                                  طلب الوقت الإضافي: {session.overtime_order_number}
+                                </p>
+                              )}
+                            </>
                           )}
                           {session.payment_type === 'SUBSCRIPTION' && (
                             <span className="text-xs text-primary-yellow flex items-center gap-1">
@@ -616,13 +674,20 @@ const CheckIn = () => {
                   ))}
                 </select>
                 <Button onClick={handleAssignWristband} disabled={loading || !assignSessionId} className="w-full">
-                  Assign wristband
+                  تعيين سوار
                 </Button>
 
                 {assignedWristband && (
                   <div className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                    <p className="text-sm">Code: <strong>{assignedWristband.code}</strong></p>
+                    <p className="text-sm">الكود: <strong>{assignedWristband.code}</strong></p>
+                    <p className="text-xs text-gray-600">الحالة: {assignedWristband.status || 'issued'}</p>
                     <img src={assignedWristband.qr_code_url} alt="Wristband QR" className="w-40 h-40 mx-auto" />
+                  </div>
+                )}
+
+                {wristbandError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {wristbandError}
                   </div>
                 )}
               </CardContent>
@@ -640,14 +705,22 @@ const CheckIn = () => {
                   onChange={(event) => setScanWristbandCode(event.target.value)}
                 />
                 <Button onClick={handleScanWristband} disabled={loading || !scanWristbandCode.trim()} className="w-full">
-                  Activate session
+                  تفعيل السوار
                 </Button>
+
+                {wristbandLookup && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+                    <p>الجلسة: <strong>{wristbandLookup.session_id || '-'}</strong></p>
+                    <p>حالة السوار: <strong>{wristbandLookup.status || '-'}</strong></p>
+                    <p>وقت التفعيل: <strong>{wristbandLookup.activated_at ? formatTime(wristbandLookup.activated_at) : 'غير مفعل'}</strong></p>
+                  </div>
+                )}
 
                 {wristbandScanResult && (
                   <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
                     <p>تم تفعيل الجلسة بنجاح</p>
-                    <p>Session: {wristbandScanResult.session_id}</p>
-                    <p>Status: {wristbandScanResult.status}</p>
+                    <p>الجلسة: {wristbandScanResult.session_id}</p>
+                    <p>الحالة: {wristbandScanResult.status}</p>
                   </div>
                 )}
               </CardContent>
@@ -669,14 +742,14 @@ const CheckIn = () => {
             <div className="space-y-3 py-2">
               <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
                 <p>الحالة: <strong>{checkoutResult.status === 'OVERDUE' ? 'متأخر' : 'تم تسجيل الخروج'}</strong></p>
-                <p>المدة: <strong>{checkoutResult.duration_minutes || 0} دقيقة</strong></p>
-                <p>الوقت المشمول: <strong>{checkoutResult.included_minutes || 0} دقيقة</strong></p>
-                <p>الوقت الإضافي: <strong>{checkoutResult.overdue_minutes || 0} دقيقة</strong></p>
+                <p>المدة: <strong>{toSafeNumber(checkoutResult.duration_minutes)} دقيقة</strong></p>
+                <p>الوقت المشمول: <strong>{toSafeNumber(checkoutResult.included_minutes)} دقيقة</strong></p>
+                <p>الوقت الإضافي: <strong>{toSafeNumber(checkoutResult.overdue_minutes)} دقيقة</strong></p>
               </div>
 
-              {checkoutResult.overdue_amount > 0 ? (
+              {toSafeNumber(checkoutResult.overdue_amount) > 0 ? (
                 <div className="bg-playful-orange/10 border border-playful-orange/30 rounded-input p-3 text-sm space-y-1">
-                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {checkoutResult.overdue_amount} د.أ</p>
+                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {toSafeNumber(checkoutResult.overdue_amount).toFixed(2)} د.أ</p>
                   {checkoutResult.overtime_order_number && (
                     <p>رقم الطلب: <strong>{checkoutResult.overtime_order_number}</strong></p>
                   )}
@@ -893,44 +966,6 @@ const CheckIn = () => {
               data-testid="accept-waiver-btn"
             >
               {loading ? 'جاري الحفظ...' : 'أوافق على الشروط'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(checkoutResult)} onOpenChange={(open) => !open && setCheckoutResult(null)}>
-        <DialogContent className="rounded-modal max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <LogOut className="w-6 h-6 text-playful-green" />
-              ملخص تسجيل الخروج
-            </DialogTitle>
-          </DialogHeader>
-
-          {checkoutResult && (
-            <div className="space-y-3 py-2">
-              <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
-                <p><strong>مدة الجلسة:</strong> {checkoutResult.duration_minutes || 0} دقيقة</p>
-                <p><strong>الوقت المشمول:</strong> {checkoutResult.included_minutes || 0} دقيقة</p>
-                {checkoutResult.overdue_minutes > 0 && (
-                  <p className="text-playful-orange font-semibold"><strong>وقت إضافي:</strong> {checkoutResult.overdue_minutes} دقيقة</p>
-                )}
-                <p className={checkoutResult.overdue_amount > 0 ? 'text-playful-orange font-bold' : 'text-playful-green font-bold'}>
-                  {checkoutResult.overdue_amount > 0 ? `رسوم الوقت الإضافي: ${checkoutResult.overdue_amount} د.أ` : 'لا توجد رسوم وقت إضافي'}
-                </p>
-                {checkoutResult.overtime_order_number && (
-                  <p><strong>رقم الطلب:</strong> {checkoutResult.overtime_order_number}</p>
-                )}
-                {checkoutResult.overtime_order_id && (
-                  <p className="text-xs text-gray-500"><strong>معرّف الطلب:</strong> {checkoutResult.overtime_order_id}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button onClick={() => setCheckoutResult(null)} className="w-full rounded-button bg-playful-green hover:bg-playful-green/90 text-white">
-              تم
             </Button>
           </DialogFooter>
         </DialogContent>

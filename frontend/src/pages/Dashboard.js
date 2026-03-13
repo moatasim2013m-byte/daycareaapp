@@ -4,13 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Activity, Baby, CalendarDays, CreditCard, DollarSign, LineChart, ShoppingBag, Users } from 'lucide-react';
+import { Activity, AlertTriangle, Baby, CalendarDays, CreditCard, DollarSign, LineChart, ShoppingBag, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart as ReLineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const toSafeNumber = (value) => {
   const numericValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numericValue) ? numericValue : 0;
 };
+
+const toSafeArray = (value) => (Array.isArray(value) ? value : []);
 
 const money = (amount) => `${toSafeNumber(amount).toFixed(2)} د.أ`;
 
@@ -22,6 +24,12 @@ const Dashboard = () => {
     attendance: null,
     sessions: null,
   });
+  const [dashboardOps, setDashboardOps] = useState({
+    openOrders: [],
+    activeSubscriptions: [],
+    activeCheckins: [],
+    dailySummary: null,
+  });
   const [children, setChildren] = useState([]);
 
   const safeChildren = Array.isArray(children) ? children : [];
@@ -30,16 +38,35 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         if (['ADMIN', 'RECEPTION', 'STAFF'].includes(user?.role)) {
-          const [revenueRes, attendanceRes, sessionsRes] = await Promise.all([
+          const [
+            revenueRes,
+            attendanceRes,
+            sessionsRes,
+            ordersRes,
+            subscriptionsRes,
+            activeCheckinsRes,
+            dailySummaryRes,
+          ] = await Promise.all([
             api.get('/analytics/revenue'),
             api.get('/analytics/attendance'),
             api.get('/analytics/sessions'),
+            api.get('/orders', { params: { status_filter: 'OPEN', limit: 200 } }),
+            api.get('/subscriptions', { params: { status_filter: 'ACTIVE' } }),
+            api.get('/checkin/active'),
+            api.get('/reports/daily-summary'),
           ]);
 
           setAnalytics({
             revenue: revenueRes.data,
             attendance: attendanceRes.data,
             sessions: sessionsRes.data,
+          });
+
+          setDashboardOps({
+            openOrders: toSafeArray(ordersRes.data),
+            activeSubscriptions: toSafeArray(subscriptionsRes.data),
+            activeCheckins: toSafeArray(activeCheckinsRes.data),
+            dailySummary: dailySummaryRes.data || null,
           });
         } else {
           const childrenRes = await api.get('/children');
@@ -55,27 +82,24 @@ const Dashboard = () => {
     fetchData();
   }, [user]);
 
-  const topProducts = useMemo(() => analytics.revenue?.charts?.top_products || [], [analytics]);
+  const topProducts = useMemo(() => toSafeArray(analytics.revenue?.charts?.top_products), [analytics]);
+  const membershipTrends = useMemo(() => toSafeArray(analytics.attendance?.charts?.membership_trends), [analytics]);
+  const sessionMix = useMemo(() => toSafeArray(analytics.sessions?.charts?.session_mix), [analytics]);
+  const sessionUtilization = useMemo(() => toSafeArray(analytics.sessions?.charts?.session_utilization), [analytics]);
 
-  const getElapsedMinutes = (session) => {
-    if (typeof session.durationMinutes === 'number' && session.durationMinutes >= 0) {
-      return session.durationMinutes;
-    }
+  const openOrders = toSafeArray(dashboardOps.openOrders);
+  const overtimeSensitiveOrders = openOrders.filter((order) => {
+    const joinedItems = toSafeArray(order?.items)
+      .map((item) => `${item?.product_name_en || ''} ${item?.product_name_ar || ''}`.toLowerCase())
+      .join(' ');
+    return joinedItems.includes('overtime') || joinedItems.includes('وقت إضافي');
+  });
 
-    const start = session.sessionStart || session.started_at || session.checkin_at;
-    if (!start) return 0;
-
-    const startedAt = new Date(start);
-    return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
-  };
-
-  const getCurrentCost = (session) => {
-    const totalCharge = toSafeNumber(session.totalCharge);
-    if (totalCharge > 0 || session.totalCharge === 0 || session.totalCharge === '0') {
-      return totalCharge.toFixed(2);
-    }
-    return '0.00';
-  };
+  const zonesSummary = sessionUtilization.reduce((acc, zone) => {
+    const zoneName = zone?.name || 'غير محدد';
+    acc[zoneName] = toSafeNumber(zone?.sessions);
+    return acc;
+  }, {});
 
   if (loading) {
     return (
@@ -106,46 +130,21 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد اليوم</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_today)}</p></div><DollarSign className="w-10 h-10 text-emerald-500" /></div></CardContent></Card>
             <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد هذا الأسبوع</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_this_week)}</p></div><LineChart className="w-10 h-10 text-violet-500" /></div></CardContent></Card>
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">الجلسات النشطة</p><p className="peek-kpi-value mt-1">{sessionsMetrics.active_sessions || 0}</p></div><Activity className="w-10 h-10 text-blue-500" /></div></CardContent></Card>
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">زيارات اليوم</p><p className="peek-kpi-value mt-1">{attendanceMetrics.visits_today || 0}</p></div><Users className="w-10 h-10 text-orange-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">الجلسات النشطة الآن</p><p className="peek-kpi-value mt-1">{toSafeNumber(sessionsMetrics.active_sessions)}</p></div><Activity className="w-10 h-10 text-blue-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">زيارات اليوم</p><p className="peek-kpi-value mt-1">{toSafeNumber(attendanceMetrics.visits_today)}</p></div><Users className="w-10 h-10 text-orange-500" /></div></CardContent></Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShoppingBag className="w-4 h-4 text-blue-500" />طلبات مفتوحة/غير مدفوعة</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{openOrders.length}</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="w-4 h-4 text-playful-orange" />طلبات وقت إضافي</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{overtimeSensitiveOrders.length}</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="w-4 h-4 text-indigo-500" />اشتراكات نشطة</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{dashboardOps.activeSubscriptions.length}</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="w-4 h-4 text-teal-500" />إيراد يومي (ملخص)</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(dashboardOps.dailySummary?.revenue?.total)}</p></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="w-4 h-4 text-indigo-500" />إيراد الاشتراكات</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(revenueMetrics.membership_revenue)}</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShoppingBag className="w-4 h-4 text-emerald-500" />إيراد نقاط البيع POS</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(revenueMetrics.pos_revenue)}</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="w-4 h-4 text-rose-500" />إيراد حجوزات الفعاليات</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(revenueMetrics.event_bookings_revenue)}</p></CardContent></Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Daily Revenue Chart</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ReLineChart data={analytics.revenue?.charts?.daily_revenue || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
-                  </ReLineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Session Utilization</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analytics.sessions?.charts?.session_utilization || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="sessions" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">ملخص المناطق</CardTitle></CardHeader><CardContent className="space-y-2">{Object.keys(zonesSummary).length === 0 ? <p className="text-sm text-gray-500">لا توجد بيانات مناطق</p> : Object.entries(zonesSummary).map(([name, count]) => (<div key={name} className="flex items-center justify-between text-sm"><span>{name}</span><strong>{count}</strong></div>))}</CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">جلسات دخول اليوم</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{dashboardOps.activeCheckins.length}</p><p className="text-xs text-gray-500 mt-2">جلسات check-in النشطة حالياً</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">تحصيل الوقت الإضافي اليوم</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(dashboardOps.dailySummary?.revenue?.overtime)}</p><p className="text-xs text-gray-500 mt-2">من تقرير اليوم</p></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -172,7 +171,7 @@ const Dashboard = () => {
               <CardHeader><CardTitle>Membership Trends</CardTitle></CardHeader>
               <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ReLineChart data={analytics.attendance?.charts?.membership_trends || []}>
+                  <ReLineChart data={membershipTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 12 }} />
@@ -187,17 +186,34 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          <Card className="peek-card peek-role-panel-admin">
-            <CardHeader><CardTitle>Session Mix</CardTitle></CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={analytics.sessions?.charts?.session_mix || []} dataKey="value" nameKey="name" outerRadius={90} fill="#6366f1" label />
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <Card className="peek-card peek-role-panel-admin">
+              <CardHeader><CardTitle>Session Utilization</CardTitle></CardHeader>
+              <CardContent className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sessionUtilization}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="sessions" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="peek-card peek-role-panel-admin">
+              <CardHeader><CardTitle>Session Mix</CardTitle></CardHeader>
+              <CardContent className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={sessionMix} dataKey="value" nameKey="name" outerRadius={90} fill="#6366f1" label />
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
