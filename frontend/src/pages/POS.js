@@ -57,6 +57,12 @@ const POS = () => {
   const [processing, setProcessing] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [openOvertimeOrders, setOpenOvertimeOrders] = useState([]);
+
+  const toSafeNumber = (value) => {
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  };
 
   // Fetch branches
   useEffect(() => {
@@ -94,6 +100,33 @@ const POS = () => {
       }
     };
     fetchProducts();
+  }, [selectedBranch]);
+
+  useEffect(() => {
+    const fetchOpenOvertimeOrders = async () => {
+      try {
+        const response = await api.get('/orders', {
+          params: {
+            status_filter: 'OPEN',
+            limit: 200,
+          },
+        });
+
+        const overtimeOrders = (Array.isArray(response.data) ? response.data : []).filter((order) => {
+          const items = Array.isArray(order?.items) ? order.items : [];
+          return items.some((item) => {
+            const text = `${item?.product_name_en || ''} ${item?.product_name_ar || ''}`.toLowerCase();
+            return text.includes('overtime') || text.includes('وقت إضافي');
+          });
+        });
+
+        setOpenOvertimeOrders(overtimeOrders);
+      } catch (error) {
+        console.error('Error loading overtime orders:', error);
+      }
+    };
+
+    fetchOpenOvertimeOrders();
   }, [selectedBranch]);
 
   // Get unique categories from products
@@ -222,6 +255,25 @@ const POS = () => {
       </div>
 
       <div className="peek-shell max-w-7xl">
+        {openOvertimeOrders.length > 0 && (
+          <Card className="peek-card border-2 border-playful-orange/50 bg-playful-orange/5 mb-4">
+            <CardContent className="p-4 text-sm">
+              <p className="font-semibold text-playful-orange mb-2">طلبات وقت إضافي بانتظار التحصيل</p>
+              <div className="space-y-1">
+                {openOvertimeOrders.slice(0, 3).map((order) => (
+                  <div key={order.order_id} className="flex items-center justify-between">
+                    <span>{order.order_number || order.order_id}</span>
+                    <span className="font-semibold">{toSafeNumber(order.total_amount).toFixed(2)} د.أ</span>
+                  </div>
+                ))}
+                {openOvertimeOrders.length > 3 && (
+                  <p className="text-xs text-gray-500">+{openOvertimeOrders.length - 3} طلب إضافي</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products Grid */}
           <div className="lg:col-span-2 space-y-6">
