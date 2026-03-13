@@ -60,6 +60,12 @@ def _sample_payments():
     now = datetime.now(timezone.utc)
     return {
         "subscription_status": "ACTIVE",
+        "visit_pack": {
+            "name": "10 Visits Pack",
+            "status": "ACTIVE",
+            "visits_remaining": 6,
+            "expiry_date": (now + timedelta(days=45)).isoformat(),
+        },
         "payment_history": [
             {
                 "payment_id": "pay-1",
@@ -78,6 +84,22 @@ def _sample_payments():
                 "method": "CARD",
                 "paid_at": (now - timedelta(days=2)).isoformat(),
                 "description": "Extended hours",
+            },
+        ],
+        "recent_orders": [
+            {
+                "order_id": "ord-1",
+                "total_amount": 180.0,
+                "currency": "JOD",
+                "status": "PAID",
+                "created_at": (now - timedelta(days=8)).isoformat(),
+            },
+            {
+                "order_id": "ord-2",
+                "total_amount": 25.0,
+                "currency": "JOD",
+                "status": "PAID",
+                "created_at": (now - timedelta(days=2)).isoformat(),
             },
         ],
     }
@@ -123,7 +145,12 @@ def _sample_bookings():
                 "time": "10:00",
                 "status": "PENDING",
             },
-        ]
+        ],
+        "upcoming_event": {
+            "title": "Family day workshop",
+            "status": "OPEN",
+            "start_at": (now + timedelta(days=3, hours=1)).isoformat(),
+        },
     }
 
 
@@ -227,9 +254,54 @@ async def get_parent_payments(
             }
         )
 
+    visit_pack = await db.entitlements.find_one(
+        {
+            "child_id": {"$in": child_ids},
+            "kind": {"$in": ["VISIT_PACK", "PACKAGE", "PACK"]},
+        },
+        {"_id": 0, "name": 1, "status": 1, "remaining_visits": 1, "visits_remaining": 1, "expires_at": 1, "expiry_date": 1},
+        sort=[("created_at", -1)],
+    )
+
+    recent_orders = await db.orders.find(
+        {"child_id": {"$in": child_ids}},
+        {"_id": 0, "order_id": 1, "total_amount": 1, "status": 1, "created_at": 1, "currency": 1},
+    ).sort("created_at", -1).to_list(length=5)
+
+    normalized_orders = []
+    for order in recent_orders:
+        created_at = order.get("created_at")
+        if isinstance(created_at, datetime):
+            created_at = created_at.isoformat()
+
+        normalized_orders.append(
+            {
+                "order_id": order.get("order_id"),
+                "total_amount": order.get("total_amount", 0),
+                "status": order.get("status", "PENDING"),
+                "currency": order.get("currency", "JOD"),
+                "created_at": created_at,
+            }
+        )
+
+    mapped_pack = None
+    if visit_pack:
+        expiry_date = visit_pack.get("expires_at") or visit_pack.get("expiry_date")
+        if isinstance(expiry_date, datetime):
+            expiry_date = expiry_date.isoformat()
+
+        mapped_pack = {
+            "name": visit_pack.get("name") or "Visit Pack",
+            "status": visit_pack.get("status", "ACTIVE"),
+            "visits_remaining": visit_pack.get("visits_remaining", visit_pack.get("remaining_visits")),
+            "expiry_date": expiry_date,
+        }
+
     return {
         "subscription_status": subscription.get("status", "NONE") if subscription else "NONE",
+        "visit_pack": mapped_pack,
         "payment_history": normalized,
+        "recent_orders": normalized_orders,
     }
 
 
@@ -262,6 +334,21 @@ async def get_parent_bookings(
         {"_id": 0},
     ).sort("date", 1).to_list(length=30)
 
+    child_ids = [booking.get("child_id") for booking in bookings if booking.get("child_id")]
+    upcoming_event = None
+    if child_ids:
+        upcoming_event = await db.event_bookings.find_one(
+            {
+                "child_id": {"$in": child_ids},
+                "start_at": {"$gte": datetime.now(timezone.utc)},
+            },
+            {"_id": 0, "title": 1, "status": 1, "start_at": 1},
+            sort=[("start_at", 1)],
+        )
+        if upcoming_event and isinstance(upcoming_event.get("start_at"), datetime):
+            upcoming_event["start_at"] = upcoming_event["start_at"].isoformat()
+
     return {
         "session_visits": bookings,
+        "upcoming_event": upcoming_event,
     }
