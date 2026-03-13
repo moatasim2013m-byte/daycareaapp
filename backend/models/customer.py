@@ -86,6 +86,9 @@ class CustomerResponse(BaseModel):
     child_age_months: Optional[int] = None
     has_active_subscription: bool = False
     subscription_expires_at: Optional[datetime] = None
+    household_primary_guardian: Optional[str] = None
+    household_children_count: Optional[int] = None
+    household_customer_count: Optional[int] = None
 
 
 class WaiverAcceptance(BaseModel):

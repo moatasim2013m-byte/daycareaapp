@@ -23,11 +23,17 @@ const normalizeChild = (child, index) => {
 
   const childName = child?.full_name || child?.name || child?.display_name || `الطفل ${index + 1}`;
   const roomId = child?.room_id ?? child?.roomId ?? child?.classroom_id ?? child?.classroomId ?? child?.zone_id;
+  const householdId = child?.household_id ?? child?.householdId ?? child?.family_id;
+  const customerId = child?.customer_id ?? child?.customerId;
+  const guardianName = child?.guardian_name ?? child?.guardianName ?? child?.parent_name;
 
   return {
     childId: String(childId),
     childName,
     roomId: roomId === undefined || roomId === null || String(roomId).trim() === '' ? null : String(roomId),
+    householdId: householdId === undefined || householdId === null || String(householdId).trim() === '' ? null : String(householdId),
+    customerId: customerId === undefined || customerId === null || String(customerId).trim() === '' ? null : String(customerId),
+    guardianName: guardianName || null,
   };
 };
 

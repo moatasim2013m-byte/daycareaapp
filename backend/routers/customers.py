@@ -29,6 +29,32 @@ def validate_child_age(dob: date) -> bool:
     return age_months <= 48  # 4 years = 48 months
 
 
+
+
+def _safe_list(value) -> list:
+    return value if isinstance(value, list) else []
+
+
+async def _hydrate_household_context(db: AsyncIOMotorDatabase, customer: dict) -> dict:
+    """Attach lightweight household context for admin/reception clarity and parent-safe linkage."""
+    household_id = customer.get("household_id")
+    if not household_id:
+        customer.setdefault("household_primary_guardian", None)
+        customer.setdefault("household_children_count", 0)
+        customer.setdefault("household_customer_count", 1)
+        return customer
+
+    household = await db.households.find_one({"household_id": household_id}, {"_id": 0})
+    household_children = _safe_list((household or {}).get("children"))
+
+    linked_customers_count = await db.customers.count_documents({"household_id": household_id})
+
+    customer["household_primary_guardian"] = (household or {}).get("primary_guardian")
+    customer["household_children_count"] = len(household_children)
+    customer["household_customer_count"] = max(1, linked_customers_count)
+    return customer
+
+
 def normalize_guardian_contacts(guardian: GuardianInfo) -> GuardianInfo:
     """Keep guardian phone/mobile fields in sync for intake compatibility."""
     data = guardian.model_dump()
@@ -105,7 +131,8 @@ async def list_customers(
             cust["has_active_subscription"] = True
             if isinstance(subscription.get("expires_at"), str):
                 cust["subscription_expires_at"] = datetime.fromisoformat(subscription["expires_at"])
-        
+
+        cust = await _hydrate_household_context(db, cust)
         result.append(CustomerResponse(**cust))
     
     return result
@@ -141,6 +168,15 @@ async def register_customer(
                 detail="لا يمكنك التسجيل في فرع آخر"
             )
     
+    # Ensure optional household linkage points to an existing household record
+    if customer_data.household_id:
+        household_exists = await db.households.find_one({"household_id": customer_data.household_id}, {"_id": 0, "household_id": 1})
+        if not household_exists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="الأسرة المرتبطة غير موجودة"
+            )
+
     # Normalize guardian contacts and create customer
     guardian = normalize_guardian_contacts(customer_data.guardian)
     customer = Customer(
@@ -216,7 +252,8 @@ async def get_customer_by_card(
         customer["has_active_subscription"] = True
         if isinstance(subscription.get("expires_at"), str):
             customer["subscription_expires_at"] = datetime.fromisoformat(subscription["expires_at"])
-    
+
+    customer = await _hydrate_household_context(db, customer)
     return CustomerResponse(**customer)
 
 
@@ -257,7 +294,8 @@ async def get_customer(
         customer["has_active_subscription"] = True
         if isinstance(subscription.get("expires_at"), str):
             customer["subscription_expires_at"] = datetime.fromisoformat(subscription["expires_at"])
-    
+
+    customer = await _hydrate_household_context(db, customer)
     return CustomerResponse(**customer)
 
 
@@ -283,6 +321,14 @@ async def update_customer(
             detail="الطفل يجب أن يكون بعمر 4 سنوات أو أقل"
         )
     
+    if updates.household_id:
+        household_exists = await db.households.find_one({"household_id": updates.household_id}, {"_id": 0, "household_id": 1})
+        if not household_exists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="الأسرة المرتبطة غير موجودة"
+            )
+
     update_data = {}
     if updates.child_name:
         update_data["child_name"] = updates.child_name

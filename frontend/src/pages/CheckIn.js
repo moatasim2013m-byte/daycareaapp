@@ -488,6 +488,13 @@ const CheckIn = () => {
                           <span dir="ltr">{scanResult.customer.guardian.phone}</span>
                         </div>
                       )}
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p>Customer Ref: {scanResult.customer.customer_id || '—'}</p>
+                        <p>Household Ref: {scanResult.customer.household_id || '—'}</p>
+                        {scanResult.customer.household_primary_guardian && (
+                          <p>Primary guardian: {scanResult.customer.household_primary_guardian}</p>
+                        )}
+                      </div>
                       {scanResult.has_subscription && scanResult.subscription && (
                         <div className="flex items-center gap-3 text-primary-yellow">
                           <Crown className="w-5 h-5" />
