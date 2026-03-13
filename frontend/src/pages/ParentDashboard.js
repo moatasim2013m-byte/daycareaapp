@@ -33,25 +33,28 @@ const ParentDashboard = () => {
   const [attendance, setAttendance] = useState([]);
   const [payments, setPayments] = useState(DEFAULT_PAYMENTS);
   const [messages, setMessages] = useState([]);
-  const [bookings, setBookings] = useState(DEFAULT_BOOKINGS);
+  const [bookings, setBookings] = useState({ session_visits: [] });
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [feedRes, attendanceRes, paymentsRes, messagesRes, bookingsRes] = await Promise.all([
+        const [feedRes, attendanceRes, paymentsRes, messagesRes, bookingsRes, eventsRes] = await Promise.all([
           api.get('/parent/feed'),
           api.get('/parent/attendance'),
           api.get('/parent/payments'),
           api.get('/parent/messages'),
           api.get('/parent/bookings'),
+          api.get('/events'),
         ]);
 
-        setFeed(asArray(feedRes?.data));
-        setAttendance(asArray(attendanceRes?.data));
-        setPayments({ ...DEFAULT_PAYMENTS, ...(paymentsRes?.data || {}) });
-        setMessages(asArray(messagesRes?.data));
-        setBookings({ ...DEFAULT_BOOKINGS, ...(bookingsRes?.data || {}) });
+        setFeed(Array.isArray(feedRes.data) ? feedRes.data : []);
+        setAttendance(Array.isArray(attendanceRes.data) ? attendanceRes.data : []);
+        setPayments(paymentsRes.data || { subscription_status: 'NONE', payment_history: [] });
+        setMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
+        setBookings(bookingsRes.data || { session_visits: [] });
+        setEvents(Array.isArray(eventsRes.data) ? eventsRes.data : []);
       } catch (error) {
         console.error('Failed to load parent dashboard:', error);
       } finally {
@@ -62,34 +65,12 @@ const ParentDashboard = () => {
     load();
   }, []);
 
-  const children = useMemo(() => readCachedChildContexts(), []);
-  const latestVisit = attendance[0] || null;
-  const upcomingBooking = useMemo(() => {
-    const allVisits = asArray(bookings?.session_visits);
-    if (allVisits.length === 0) return null;
-
-    const sorted = [...allVisits].sort((a, b) => {
-      const left = new Date(pickEventDate(a)).getTime();
-      const right = new Date(pickEventDate(b)).getTime();
-      return left - right;
-    });
-
-    const now = Date.now();
-    return sorted.find((entry) => new Date(pickEventDate(entry)).getTime() >= now) || sorted[0];
-  }, [bookings]);
-
-  const latestPayment = asArray(payments?.payment_history)[0] || null;
-  const latestMessage = messages[0] || null;
-
-  const stats = useMemo(
-    () => ({
-      childCount: children.length,
-      attendanceCount: attendance.length,
-      sessionVisits: asArray(bookings?.session_visits).length,
-      paymentCount: asArray(payments?.payment_history).length,
-    }),
-    [children, attendance, bookings, payments]
-  );
+  const stats = useMemo(() => ({
+    dailyReports: feed.filter((item) => item.type === 'daily_report').length,
+    photoFeed: feed.filter((item) => item.photo_url).length,
+    sessionVisits: (bookings.session_visits || []).length,
+    upcomingEvents: events.filter((event) => new Date(event.date) >= new Date(new Date().setHours(0, 0, 0, 0))).length,
+  }), [feed, bookings, events]);
 
   if (loading) {
     return (
@@ -112,11 +93,12 @@ const ParentDashboard = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="peek-card"><CardContent className="p-4"><p className="text-xs text-gray-500">Children</p><p className="text-2xl font-semibold">{stats.childCount}</p></CardContent></Card>
-          <Card className="peek-card"><CardContent className="p-4"><p className="text-xs text-gray-500">Attendance logs</p><p className="text-2xl font-semibold">{stats.attendanceCount}</p></CardContent></Card>
-          <Card className="peek-card"><CardContent className="p-4"><p className="text-xs text-gray-500">Visit sessions</p><p className="text-2xl font-semibold">{stats.sessionVisits}</p></CardContent></Card>
-          <Card className="peek-card"><CardContent className="p-4"><p className="text-xs text-gray-500">Payments</p><p className="text-2xl font-semibold">{stats.paymentCount}</p></CardContent></Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="peek-card"><CardContent className="p-4"><p className="text-sm text-gray-500">Daily reports</p><p className="text-2xl font-semibold">{stats.dailyReports}</p></CardContent></Card>
+          <Card className="peek-card"><CardContent className="p-4"><p className="text-sm text-gray-500">Photo feed</p><p className="text-2xl font-semibold">{stats.photoFeed}</p></CardContent></Card>
+          <Card className="peek-card"><CardContent className="p-4"><p className="text-sm text-gray-500">Subscription</p><p className="text-2xl font-semibold">{payments.subscription_status || 'NONE'}</p></CardContent></Card>
+          <Card className="peek-card"><CardContent className="p-4"><p className="text-sm text-gray-500">Session visits</p><p className="text-2xl font-semibold">{stats.sessionVisits}</p></CardContent></Card>
+          <Card className="peek-card"><CardContent className="p-4"><p className="text-sm text-gray-500">Upcoming events</p><p className="text-2xl font-semibold">{stats.upcomingEvents}</p></CardContent></Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -137,6 +119,24 @@ const ParentDashboard = () => {
             </CardContent>
           </Card>
 
+
+        <Card className="peek-card">
+          <CardHeader><CardTitle>Upcoming Events</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {events.length === 0 ? <p className="text-sm text-gray-500">No upcoming events.</p> : events
+              .filter((event) => new Date(event.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
+              .slice(0, 4)
+              .map((event) => (
+                <div key={event.id} className="rounded-lg border border-gray-100 p-3 text-sm">
+                  <p className="font-medium">{event.title}</p>
+                  <p className="text-gray-600">{event.date} {event.startTime}-{event.endTime}</p>
+                  <p className="text-gray-600">Status: {event.status} • Capacity: {event.usedCapacity}/{event.capacity}</p>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="peek-card">
             <CardHeader><CardTitle>Latest Attendance / Visit</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
