@@ -72,31 +72,50 @@ describe('ParentDashboard', () => {
     jest.clearAllMocks();
   });
 
-  it('renders parent dashboard sections', async () => {
+  it('renders useful parent dashboard sections and working actions', async () => {
     localStorage.setItem('token', 'test');
     localStorage.setItem('user', JSON.stringify({ role: 'PARENT', display_name: 'Parent User' }));
 
     api.get.mockImplementation((url) => {
       if (url === '/parent/feed') return Promise.resolve({ data: [{ id: 'f1', type: 'daily_report', title: 'Daily', description: 'Report', photo_url: 'x' }] });
-      if (url === '/parent/attendance') return Promise.resolve({ data: [{ session_id: 's1', date: '2026-03-01', check_in: new Date().toISOString(), check_out: new Date().toISOString() }] });
+      if (url === '/parent/attendance') return Promise.resolve({ data: [{ session_id: 's1', date: '2026-03-01', check_in: new Date().toISOString(), check_out: new Date().toISOString(), status: 'Present' }] });
       if (url === '/parent/payments') return Promise.resolve({ data: { subscription_status: 'ACTIVE', visit_pack: { name: '10 Visits Pack', status: 'ACTIVE', visits_remaining: 5 }, payment_history: [{ payment_id: 'p1', description: 'Monthly', amount: 100, currency: 'JOD', status: 'COMPLETED' }], recent_orders: [{ order_id: 'o1', total_amount: 100, currency: 'JOD', status: 'PAID', created_at: new Date().toISOString() }] } });
       if (url === '/parent/messages') return Promise.resolve({ data: [{ id: 'm1', subject: 'Hello', body: 'Message' }] });
-      if (url === '/parent/bookings') return Promise.resolve({ data: { session_visits: [{ booking_id: 'b1', service: 'Session', date: '2026-03-10', time: '10:00', status: 'CONFIRMED' }], upcoming_event: { title: 'Family workshop', status: 'OPEN', start_at: new Date().toISOString() } } });
+      if (url === '/parent/bookings') return Promise.resolve({ data: { session_visits: [{ booking_id: 'b1', service: 'Session', date: '2026-03-20T10:00:00.000Z', status: 'CONFIRMED' }], upcoming_event: { title: 'Family workshop', status: 'OPEN', start_at: '2026-03-22T11:00:00.000Z' } } });
       return Promise.resolve({ data: [] });
     });
 
-    localStorage.setItem('children', JSON.stringify([{ child_id: '1', full_name: 'Lina' }]));
+    localStorage.setItem('children', JSON.stringify([{ child_id: '1', full_name: 'Lina', age_years: 3, status: 'ACTIVE', customer_id: 'cust-1' }]));
     window.history.pushState({}, '', '/parent/dashboard');
 
     await act(async () => {
       root.render(<App />);
     });
 
-    expect(container.textContent).toContain('Parent Portal Dashboard');
-    expect(container.textContent).toContain('Activity Feed');
-    expect(container.textContent).toContain('Attendance History');
-    expect(container.textContent).toContain('Subscription / Pack Status');
-    expect(container.textContent).toContain('Recent Payment / Order');
-    expect(container.textContent).toContain('Upcoming Event / Booking');
+    expect(container.textContent).toContain('الرئيسية لولي الأمر');
+    expect(container.textContent).toContain('ملخص الأطفال');
+    expect(container.textContent).toContain('Lina');
+    expect(container.textContent).toContain('الباقات والاشتراكات');
+    expect(container.textContent).toContain('الزيارات والحضور الأخير');
+    expect(container.textContent).toContain('المدفوعات والطلبات');
+    expect(container.textContent).toContain('الفعالية أو الحجز القادم');
+    expect(container.querySelector('a[href="/parent/messages"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/billing"]')).not.toBeNull();
+  });
+
+  it('shows helpful empty states when data is missing', async () => {
+    localStorage.setItem('token', 'test');
+    localStorage.setItem('user', JSON.stringify({ role: 'PARENT', display_name: 'Parent User' }));
+
+    api.get.mockResolvedValue({ data: [] });
+    window.history.pushState({}, '', '/parent/dashboard');
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    expect(container.textContent).toContain('لا يوجد طفل مرتبط بحسابك حتى الآن');
+    expect(container.textContent).toContain('لا توجد باقة نشطة ظاهرة الآن');
+    expect(container.textContent).toContain('لا توجد زيارات حديثة حتى الآن');
   });
 });
