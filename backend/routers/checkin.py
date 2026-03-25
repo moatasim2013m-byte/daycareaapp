@@ -145,6 +145,26 @@ def _enrich_session_for_ui(session: dict) -> dict:
         session.setdefault("is_overdue", False)
 
     session.setdefault("overdue_hours_charged", math.ceil(session.get("overdue_minutes", 0) / 60) if session.get("overdue_minutes", 0) > 0 else 0)
+    session.setdefault("wristband_status", "not_assigned")
+    session.setdefault("session_active", False)
+    return session
+
+
+async def _attach_wristband_state(db: AsyncIOMotorDatabase, session: dict) -> dict:
+    session_id = session.get("session_id")
+    if not session_id:
+        session["wristband_status"] = session.get("wristband_status") or "not_assigned"
+        return session
+
+    wristband = await db.wristbands.find_one({"session_id": session_id}, {"_id": 0})
+    if not wristband:
+        session["wristband_status"] = session.get("wristband_status") or "not_assigned"
+        return session
+
+    session["wristband_id"] = wristband.get("id")
+    session["wristband_status"] = wristband.get("status") or session.get("wristband_status") or "not_assigned"
+    session["wristband_code"] = wristband.get("code")
+    session["wristband_activated_at"] = wristband.get("activated_at")
     return session
 
 
@@ -185,6 +205,9 @@ async def scan_card(
     if active_session:
         if isinstance(active_session.get("check_in_time"), str):
             active_session["check_in_time"] = datetime.fromisoformat(active_session["check_in_time"])
+        if isinstance(active_session.get("session_started_at"), str):
+            active_session["session_started_at"] = datetime.fromisoformat(active_session["session_started_at"])
+        active_session = await _attach_wristband_state(db, active_session)
         active_session = _enrich_session_for_ui(active_session)
         
         return {
@@ -342,6 +365,8 @@ async def check_in(
     session_dict["check_in_time"] = session_dict["check_in_time"].isoformat()
     session_dict["created_at"] = session_dict["created_at"].isoformat()
     session_dict["updated_at"] = session_dict["updated_at"].isoformat()
+    if session_dict.get("session_started_at"):
+        session_dict["session_started_at"] = session_dict["session_started_at"].isoformat()
     
     await db.checkin_sessions.insert_one(session_dict)
     
@@ -521,6 +546,11 @@ async def list_active_sessions(
     for sess in sessions:
         if isinstance(sess.get("check_in_time"), str):
             sess["check_in_time"] = datetime.fromisoformat(sess["check_in_time"])
+        if isinstance(sess.get("session_started_at"), str):
+            sess["session_started_at"] = datetime.fromisoformat(sess["session_started_at"])
+        sess = await _attach_wristband_state(db, sess)
+        if isinstance(sess.get("wristband_activated_at"), str):
+            sess["wristband_activated_at"] = datetime.fromisoformat(sess["wristband_activated_at"])
         sess = _enrich_session_for_ui(sess)
         
         # Get customer info

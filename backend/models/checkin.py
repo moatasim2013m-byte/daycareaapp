@@ -45,6 +45,10 @@ class CheckInSession(BaseModel):
     overtime_order_number: Optional[str] = None
 
     status: CheckInStatus = "CHECKED_IN"
+    wristband_id: Optional[str] = None
+    wristband_status: Optional[str] = "not_assigned"
+    session_active: bool = False
+    session_started_at: Optional[datetime] = None
     notes: Optional[str] = None
 
     created_by: Optional[str] = None  # Staff user ID
@@ -75,6 +79,12 @@ class CheckInSessionResponse(BaseModel):
     overtime_order_id: Optional[str] = None
     overtime_order_number: Optional[str] = None
     status: CheckInStatus
+    wristband_id: Optional[str] = None
+    wristband_status: Optional[str] = None
+    wristband_code: Optional[str] = None
+    wristband_activated_at: Optional[datetime] = None
+    session_active: Optional[bool] = None
+    session_started_at: Optional[datetime] = None
     notes: Optional[str] = None
     # Customer info (populated on response)
     child_name: Optional[str] = None
