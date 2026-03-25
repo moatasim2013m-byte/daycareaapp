@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Activity, AlertTriangle, Baby, CalendarDays, CreditCard, DollarSign, LineChart, ShoppingBag, Users } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart as ReLineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Activity, AlertTriangle, Baby, CalendarDays, CreditCard, DollarSign, LineChart, ShoppingBag, Users, WifiOff } from 'lucide-react';
 
 const toSafeNumber = (value) => {
   const numericValue = typeof value === 'number' ? value : Number(value);
@@ -15,6 +14,12 @@ const toSafeNumber = (value) => {
 const toSafeArray = (value) => (Array.isArray(value) ? value : []);
 
 const money = (amount) => `${toSafeNumber(amount).toFixed(2)} د.أ`;
+
+const safeIsoDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -26,12 +31,15 @@ const Dashboard = () => {
   });
   const [dashboardOps, setDashboardOps] = useState({
     openOrders: [],
+    paidOrders: [],
     activeSubscriptions: [],
     activeCheckins: [],
+    upcomingEvents: [],
     dailySummary: null,
   });
   const [children, setChildren] = useState([]);
   const [deviceStatuses, setDeviceStatuses] = useState([]);
+  const [errors, setErrors] = useState([]);
 
   const safeChildren = Array.isArray(children) ? children : [];
 
@@ -39,40 +47,49 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         if (['ADMIN', 'RECEPTION', 'STAFF'].includes(user?.role)) {
-          const [
-            revenueRes,
-            attendanceRes,
-            sessionsRes,
-            ordersRes,
-            subscriptionsRes,
-            activeCheckinsRes,
-            dailySummaryRes,
-            deviceStatusRes,
-          ] = await Promise.all([
-            api.get('/analytics/revenue'),
-            api.get('/analytics/attendance'),
-            api.get('/analytics/sessions'),
-            api.get('/orders', { params: { status_filter: 'OPEN', limit: 200 } }),
-            api.get('/subscriptions', { params: { status_filter: 'ACTIVE' } }),
-            api.get('/checkin/active'),
-            api.get('/reports/daily-summary'),
-            api.get('/devices/status').catch(() => ({ data: [] })),
-          ]);
+          const adminRequests = [
+            { key: 'revenue', label: 'تحليلات الإيرادات', request: api.get('/analytics/revenue') },
+            { key: 'attendance', label: 'تحليلات الحضور', request: api.get('/analytics/attendance') },
+            { key: 'sessions', label: 'تحليلات الجلسات', request: api.get('/analytics/sessions') },
+            { key: 'openOrders', label: 'الطلبات المفتوحة', request: api.get('/orders', { params: { status_filter: 'OPEN', limit: 200 } }) },
+            { key: 'paidOrders', label: 'المدفوعات الحديثة', request: api.get('/orders', { params: { status_filter: 'PAID', limit: 10 } }) },
+            { key: 'subscriptions', label: 'الاشتراكات النشطة', request: api.get('/subscriptions', { params: { status_filter: 'ACTIVE' } }) },
+            { key: 'activeCheckins', label: 'جلسات الحضور النشطة', request: api.get('/checkin/active') },
+            { key: 'dailySummary', label: 'الملخص اليومي', request: api.get('/reports/daily-summary') },
+            { key: 'deviceStatus', label: 'حالة الأجهزة', request: api.get('/devices/status') },
+            { key: 'events', label: 'الفعاليات', request: api.get('/events') },
+          ];
+          const settled = await Promise.allSettled(adminRequests.map((item) => item.request));
+
+          const payloadByKey = {};
+          const failures = [];
+          settled.forEach((result, idx) => {
+            const descriptor = adminRequests[idx];
+            if (result.status === 'fulfilled') {
+              payloadByKey[descriptor.key] = result.value?.data;
+            } else {
+              payloadByKey[descriptor.key] = null;
+              failures.push(descriptor.label);
+            }
+          });
 
           setAnalytics({
-            revenue: revenueRes.data,
-            attendance: attendanceRes.data,
-            sessions: sessionsRes.data,
+            revenue: payloadByKey.revenue || null,
+            attendance: payloadByKey.attendance || null,
+            sessions: payloadByKey.sessions || null,
           });
 
           setDashboardOps({
-            openOrders: toSafeArray(ordersRes.data),
-            activeSubscriptions: toSafeArray(subscriptionsRes.data),
-            activeCheckins: toSafeArray(activeCheckinsRes.data),
-            dailySummary: dailySummaryRes.data || null,
+            openOrders: toSafeArray(payloadByKey.openOrders),
+            paidOrders: toSafeArray(payloadByKey.paidOrders),
+            activeSubscriptions: toSafeArray(payloadByKey.subscriptions),
+            activeCheckins: toSafeArray(payloadByKey.activeCheckins),
+            upcomingEvents: toSafeArray(payloadByKey.events),
+            dailySummary: payloadByKey.dailySummary || null,
           });
 
-          setDeviceStatuses(toSafeArray(deviceStatusRes.data));
+          setDeviceStatuses(toSafeArray(payloadByKey.deviceStatus));
+          setErrors(failures);
         } else {
           const childrenRes = await api.get('/children');
           setChildren(Array.isArray(childrenRes.data) ? childrenRes.data : []);
@@ -87,12 +104,10 @@ const Dashboard = () => {
     fetchData();
   }, [user]);
 
-  const topProducts = useMemo(() => toSafeArray(analytics.revenue?.charts?.top_products), [analytics]);
-  const membershipTrends = useMemo(() => toSafeArray(analytics.attendance?.charts?.membership_trends), [analytics]);
-  const sessionMix = useMemo(() => toSafeArray(analytics.sessions?.charts?.session_mix), [analytics]);
   const sessionUtilization = useMemo(() => toSafeArray(analytics.sessions?.charts?.session_utilization), [analytics]);
 
   const openOrders = toSafeArray(dashboardOps.openOrders);
+  const paidOrders = toSafeArray(dashboardOps.paidOrders);
   const overtimeSensitiveOrders = openOrders.filter((order) => {
     const joinedItems = toSafeArray(order?.items)
       .map((item) => `${item?.product_name_en || ''} ${item?.product_name_ar || ''}`.toLowerCase())
@@ -109,6 +124,16 @@ const Dashboard = () => {
   const onlineDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'online').length;
   const offlineDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'offline').length;
   const maintenanceDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'maintenance').length;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcomingEvents = toSafeArray(dashboardOps.upcomingEvents).filter((event) => {
+    const eventDate = safeIsoDate(event?.date);
+    return eventDate && eventDate.toISOString().slice(0, 10) >= todayIso && event?.status !== 'cancelled';
+  });
+  const upcomingEventsByStatus = upcomingEvents.reduce((acc, event) => {
+    const status = event?.status || 'unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
 
   if (loading) {
     return (
@@ -136,6 +161,16 @@ const Dashboard = () => {
             </Button>
           </div>
 
+          {errors.length > 0 && (
+            <Card className="peek-card peek-role-panel-admin border-amber-200 bg-amber-50/50">
+              <CardContent className="p-4">
+                <p className="text-sm text-amber-800">
+                  بعض مصادر البيانات غير متاحة حالياً: {errors.join('، ')}. يتم عرض البيانات المتوفرة فقط.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد اليوم</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_today)}</p></div><DollarSign className="w-10 h-10 text-emerald-500" /></div></CardContent></Card>
             <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد هذا الأسبوع</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_this_week)}</p></div><LineChart className="w-10 h-10 text-violet-500" /></div></CardContent></Card>
@@ -150,104 +185,63 @@ const Dashboard = () => {
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="w-4 h-4 text-teal-500" />إيراد يومي (ملخص)</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(dashboardOps.dailySummary?.revenue?.total)}</p></CardContent></Card>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">ملخص المناطق</CardTitle></CardHeader><CardContent className="space-y-2">{Object.keys(zonesSummary).length === 0 ? <p className="text-sm text-gray-500">لا توجد بيانات مناطق</p> : Object.entries(zonesSummary).map(([name, count]) => (<div key={name} className="flex items-center justify-between text-sm"><span>{name}</span><strong>{count}</strong></div>))}</CardContent></Card>
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">جلسات دخول اليوم</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{dashboardOps.activeCheckins.length}</p><p className="text-xs text-gray-500 mt-2">جلسات check-in النشطة حالياً</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">تحصيل الوقت الإضافي اليوم</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(dashboardOps.dailySummary?.revenue?.overtime)}</p><p className="text-xs text-gray-500 mt-2">من تقرير اليوم</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">إشارات الإيراد</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex items-center justify-between"><span>اشتراكات</span><strong>{money(revenueMetrics.membership_revenue || dashboardOps.dailySummary?.revenue?.subscriptions)}</strong></div><div className="flex items-center justify-between"><span>باقات/زيارة</span><strong>{money(dashboardOps.dailySummary?.revenue?.visit_packs)}</strong></div><div className="flex items-center justify-between"><span>فعاليات</span><strong>{money(revenueMetrics.event_bookings_revenue)}</strong></div></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">ملخص الفعاليات القادمة</CardTitle></CardHeader><CardContent>{upcomingEvents.length === 0 ? <p className="text-sm text-gray-500">لا توجد فعاليات قادمة حالياً</p> : <div className="space-y-2"><p className="text-2xl font-bold">{upcomingEvents.length}</p>{Object.entries(upcomingEventsByStatus).map(([status, count]) => (<div key={status} className="flex items-center justify-between text-sm"><span>{status}</span><strong>{count}</strong></div>))}</div>}</CardContent></Card>
           </div>
-
-          <Card className="peek-card peek-role-panel-admin">
-            <CardHeader><CardTitle>حالة أجهزة الاستقبال</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="p-3 rounded-lg bg-emerald-50 text-emerald-700 text-center"><div className="text-xs">Online</div><div className="text-xl font-semibold">{onlineDevices}</div></div>
-                <div className="p-3 rounded-lg bg-amber-50 text-amber-700 text-center"><div className="text-xs">Maintenance</div><div className="text-xl font-semibold">{maintenanceDevices}</div></div>
-                <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-center"><div className="text-xs">Offline</div><div className="text-xl font-semibold">{offlineDevices}</div></div>
-              </div>
-              {deviceStatuses.length === 0 ? (
-                <div className="text-sm text-gray-500">لا توجد أجهزة مسجلة حالياً</div>
-              ) : (
-                <div className="space-y-2">
-                  {deviceStatuses.slice(0, 5).map((device) => (
-                    <div key={device.id} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2">
-                      <div>
-                        <div className="font-medium text-sm">{device.id}</div>
-                        <div className="text-xs text-gray-500">{device.deviceType} • {device.branchId}</div>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {device.effectiveStatus} {device.lastSeen ? `• ${new Date(device.lastSeen).toLocaleTimeString()}` : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Top Products</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                {topProducts.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-gray-500">لا توجد مبيعات كافية لعرض المنتجات الأعلى</div>
+              <CardHeader><CardTitle>آخر المدفوعات</CardTitle></CardHeader>
+              <CardContent>
+                {paidOrders.length === 0 ? (
+                  <p className="text-sm text-gray-500">لا توجد مدفوعات حديثة متاحة</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topProducts} layout="vertical" margin={{ left: 16 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tick={{ fontSize: 12 }} />
-                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
-                      <Tooltip />
-                      <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="space-y-2">
+                    {paidOrders.slice(0, 6).map((order) => (
+                      <div key={order.order_id || order.order_number} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 text-sm">
+                        <div>
+                          <div className="font-medium">{order.order_number || order.order_id || 'طلب'}</div>
+                          <div className="text-xs text-gray-500">{order.guardian_name || order.child_name || 'عميل غير محدد'}</div>
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold">{money(order.total_amount)}</div>
+                          <div className="text-xs text-gray-500">{safeIsoDate(order.paid_at || order.created_at)?.toLocaleString() || 'وقت غير متاح'}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
 
             <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Membership Trends</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ReLineChart data={membershipTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey="memberships" stroke="#f59e0b" strokeWidth={2} />
-                    <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
-                  </ReLineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Session Utilization</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sessionUtilization}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="sessions" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="peek-card peek-role-panel-admin">
-              <CardHeader><CardTitle>Session Mix</CardTitle></CardHeader>
-              <CardContent className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={sessionMix} dataKey="value" nameKey="name" outerRadius={90} fill="#6366f1" label />
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <CardHeader><CardTitle className="flex items-center gap-2"><WifiOff className="w-4 h-4" />حالة أجهزة الاستقبال</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="p-3 rounded-lg bg-emerald-50 text-emerald-700 text-center"><div className="text-xs">Online</div><div className="text-xl font-semibold">{onlineDevices}</div></div>
+                  <div className="p-3 rounded-lg bg-amber-50 text-amber-700 text-center"><div className="text-xs">Maintenance</div><div className="text-xl font-semibold">{maintenanceDevices}</div></div>
+                  <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-center"><div className="text-xs">Offline</div><div className="text-xl font-semibold">{offlineDevices}</div></div>
+                </div>
+                {deviceStatuses.length === 0 ? (
+                  <div className="text-sm text-gray-500">لا توجد أجهزة مسجلة حالياً</div>
+                ) : (
+                  <div className="space-y-2">
+                    {deviceStatuses.slice(0, 5).map((device) => (
+                      <div key={device.id} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2">
+                        <div>
+                          <div className="font-medium text-sm">{device.id}</div>
+                          <div className="text-xs text-gray-500">{device.deviceType} • {device.branchId}</div>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {device.effectiveStatus || 'unknown'} {device.lastSeen ? `• ${new Date(device.lastSeen).toLocaleTimeString()}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
