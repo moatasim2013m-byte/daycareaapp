@@ -173,9 +173,18 @@ const CheckIn = () => {
     setLoading(true);
     try {
       const response = await api.post(`/checkin/${sessionId}/checkout`);
-      const data = response.data;
+      const data = response.data || {};
+      let overtimeOrderStatus = null;
+      if (data.overtime_order_id) {
+        try {
+          const orderResponse = await api.get(`/orders/${data.overtime_order_id}`);
+          overtimeOrderStatus = orderResponse?.data?.status || null;
+        } catch (orderError) {
+          console.error('Error fetching overtime order status:', orderError);
+        }
+      }
 
-      setCheckoutResult(data);
+      setCheckoutResult({ ...data, overtime_order_status: overtimeOrderStatus });
 
       fetchActiveSessions();
       setScanResult(null);
@@ -289,6 +298,10 @@ const CheckIn = () => {
     return Number.isFinite(num) ? num : fallback;
   };
 
+  const formatMoney = (value) => `${toSafeNumber(value).toFixed(2)} د.أ`;
+
+  const formatMinutesLabel = (value) => `${Math.max(0, toSafeNumber(value))} دقيقة`;
+
   const getOvertimeEstimate = (overdueMinutes) => {
     const safeOverdue = Math.max(0, toSafeNumber(overdueMinutes));
     if (safeOverdue <= 0) return 0;
@@ -301,6 +314,13 @@ const CheckIn = () => {
     const overdue = Math.max(0, elapsed - included);
     const overtimeAmount = toSafeNumber(session.overdue_amount, getOvertimeEstimate(overdue));
     return { elapsed, included, overdue, overtimeAmount, isOverdue: overdue > 0 };
+  };
+
+  const getOrderStatusLabel = (status) => {
+    const normalizedStatus = `${status || ''}`.toUpperCase();
+    if (normalizedStatus === 'PAID' || normalizedStatus === 'SETTLED') return 'مدفوع';
+    if (normalizedStatus === 'OPEN' || normalizedStatus === 'PENDING') return 'غير مدفوع';
+    return status || 'غير معروف';
   };
 
   const handleAssignWristband = async () => {
@@ -603,6 +623,7 @@ const CheckIn = () => {
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                     {activeSessions.map((session) => {
                       const { elapsed, included, overdue, overtimeAmount, isOverdue } = getOverdueMeta(session);
+                      const currentCost = toSafeNumber(session.amount_charged, overtimeAmount);
                       return (
                       <div
                         key={session.session_id}
@@ -614,26 +635,28 @@ const CheckIn = () => {
                           <p className="text-sm text-gray-500">
                             دخول: {formatTime(session.check_in_time)}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            الوقت المنقضي: {elapsed} دقيقة
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            الوقت المشمول: {included} دقيقة
-                          </p>
+                          <p className="text-xs text-gray-500">الوقت المنقضي: {formatMinutesLabel(elapsed)}</p>
+                          <p className="text-xs text-gray-500">الوقت المشمول: {formatMinutesLabel(included)}</p>
                           <p className="text-xs text-gray-500">
                             الحالة: {isOverdue ? 'وقت إضافي' : 'ضمن الوقت'}
                           </p>
+                          <p className="text-xs text-gray-500">التكلفة الحالية: {formatMoney(currentCost)}</p>
                           {isOverdue && (
                             <>
                               <p className="text-xs text-playful-orange font-semibold">
-                                وقت إضافي {overdue} دقيقة
+                                وقت إضافي {formatMinutesLabel(overdue)}
                               </p>
                               <p className="text-xs text-playful-orange font-semibold">
-                                الرسوم الحالية: {overtimeAmount.toFixed(2)} د.أ
+                                مبلغ الوقت الإضافي: {formatMoney(overtimeAmount)}
                               </p>
                               {session.overtime_order_number && (
                                 <p className="text-xs text-gray-600">
                                   طلب الوقت الإضافي: {session.overtime_order_number}
+                                </p>
+                              )}
+                              {session.overtime_order_status && (
+                                <p className="text-xs text-gray-600">
+                                  حالة طلب الوقت الإضافي: {getOrderStatusLabel(session.overtime_order_status)}
                                 </p>
                               )}
                             </>
@@ -748,25 +771,32 @@ const CheckIn = () => {
           {checkoutResult && (
             <div className="space-y-3 py-2">
               <div className="bg-gray-50 rounded-input p-3 text-sm space-y-1">
-                <p>الحالة: <strong>{checkoutResult.status === 'OVERDUE' ? 'متأخر' : 'تم تسجيل الخروج'}</strong></p>
-                <p>المدة: <strong>{toSafeNumber(checkoutResult.duration_minutes)} دقيقة</strong></p>
-                <p>الوقت المشمول: <strong>{toSafeNumber(checkoutResult.included_minutes)} دقيقة</strong></p>
-                <p>الوقت الإضافي: <strong>{toSafeNumber(checkoutResult.overdue_minutes)} دقيقة</strong></p>
+                <p>حالة الجلسة: <strong>{checkoutResult.status === 'OVERDUE' ? 'تم تسجيل الخروج مع وقت إضافي' : 'تم تسجيل الخروج بالكامل'}</strong></p>
+                <p>وقت الدخول: <strong>{formatTime(checkoutResult.check_in_time)}</strong></p>
+                <p>وقت الخروج: <strong>{formatTime(checkoutResult.check_out_time)}</strong></p>
+                <p>المدة: <strong>{formatMinutesLabel(checkoutResult.duration_minutes)}</strong></p>
+                <p>الوقت المشمول: <strong>{formatMinutesLabel(checkoutResult.included_minutes)}</strong></p>
+                <p>الوقت الإضافي: <strong>{formatMinutesLabel(checkoutResult.overdue_minutes)}</strong></p>
               </div>
 
               {toSafeNumber(checkoutResult.overdue_amount) > 0 ? (
                 <div className="bg-playful-orange/10 border border-playful-orange/30 rounded-input p-3 text-sm space-y-1">
-                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {toSafeNumber(checkoutResult.overdue_amount).toFixed(2)} د.أ</p>
+                  <p className="font-bold text-playful-orange">رسوم الوقت الإضافي: {formatMoney(checkoutResult.overdue_amount)}</p>
+                  <p>حالة التحصيل: <strong>{checkoutResult.overtime_order_id ? 'يوجد مبلغ مستحق' : 'يتطلب مراجعة يدوية'}</strong></p>
                   {checkoutResult.overtime_order_number && (
                     <p>رقم الطلب: <strong>{checkoutResult.overtime_order_number}</strong></p>
                   )}
                   {checkoutResult.overtime_order_id && (
                     <p className="text-xs text-gray-600">معرّف الطلب: {checkoutResult.overtime_order_id}</p>
                   )}
+                  {checkoutResult.overtime_order_status && (
+                    <p>حالة الطلب: <strong>{getOrderStatusLabel(checkoutResult.overtime_order_status)}</strong></p>
+                  )}
+                  <p className="text-xs text-gray-600">تنبيه: الطفل خرج من الملعب لكن يجب تحصيل رسوم الوقت الإضافي قبل إغلاق الحساب.</p>
                 </div>
               ) : (
                 <div className="bg-playful-green/10 border border-playful-green/30 rounded-input p-3 text-sm">
-                  لا توجد رسوم إضافية.
+                  لا توجد رسوم إضافية. تم إغلاق الجلسة بدون أي مبلغ معلق.
                 </div>
               )}
             </div>

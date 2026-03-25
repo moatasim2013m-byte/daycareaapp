@@ -59,9 +59,9 @@ const POS = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [openOvertimeOrders, setOpenOvertimeOrders] = useState([]);
 
-  const toSafeNumber = (value) => {
+  const toSafeNumber = (value, fallback = 0) => {
     const numberValue = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(numberValue) ? numberValue : 0;
+    return Number.isFinite(numberValue) ? numberValue : fallback;
   };
 
   // Fetch branches
@@ -109,6 +109,7 @@ const POS = () => {
           params: {
             status_filter: 'OPEN',
             limit: 200,
+            branch_id: selectedBranch?.branch_id,
           },
         });
 
@@ -126,16 +127,20 @@ const POS = () => {
       }
     };
 
-    fetchOpenOvertimeOrders();
+    if (selectedBranch?.branch_id) {
+      fetchOpenOvertimeOrders();
+    } else {
+      setOpenOvertimeOrders([]);
+    }
   }, [selectedBranch]);
 
   // Get unique categories from products
-  const categories = ['ALL', ...new Set(products.map(p => p.category))];
+  const categories = ['ALL', ...new Set((Array.isArray(products) ? products : []).map((p) => p?.category).filter(Boolean))];
 
   // Filter products by category
   const filteredProducts = selectedCategory === 'ALL' 
-    ? products 
-    : products.filter(p => p.category === selectedCategory);
+    ? (Array.isArray(products) ? products : [])
+    : (Array.isArray(products) ? products : []).filter((p) => p?.category === selectedCategory);
 
   // Add to cart
   const addToCart = (product) => {
@@ -171,7 +176,7 @@ const POS = () => {
   };
 
   // Calculate totals
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (toSafeNumber(item?.price) * Math.max(0, toSafeNumber(item?.quantity))), 0);
   const tax = subtotal * 0.16; // 16% Jordan sales tax
   const total = subtotal + tax;
 
@@ -345,7 +350,7 @@ const POS = () => {
                         {/* Price */}
                         <div className="flex items-center justify-between">
                           <span className="text-xl font-bold text-playful-green">
-                            {product.price.toFixed(2)}
+                            {toSafeNumber(product.price).toFixed(2)}
                             <span className="text-sm font-normal text-gray-500 mr-1">د.أ</span>
                           </span>
                           
@@ -408,7 +413,7 @@ const POS = () => {
                               {item.name_ar}
                             </h4>
                             <p className="text-sm text-gray-500">
-                              {item.price.toFixed(2)} د.أ
+                              {toSafeNumber(item.price).toFixed(2)} د.أ
                             </p>
                           </div>
                           
@@ -510,7 +515,7 @@ const POS = () => {
               {cart.map(item => (
                 <div key={item.product_id} className="flex justify-between text-sm">
                   <span>{item.name_ar} × {item.quantity}</span>
-                  <span>{(item.price * item.quantity).toFixed(2)} د.أ</span>
+                  <span>{(toSafeNumber(item.price) * Math.max(0, toSafeNumber(item.quantity))).toFixed(2)} د.أ</span>
                 </div>
               ))}
             </div>
@@ -561,29 +566,29 @@ const POS = () => {
               <CheckCircle className="w-10 h-10 text-playful-green" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">تم الدفع بنجاح!</h2>
-            <p className="text-gray-500 mb-6">رقم الطلب: {lastOrder?.order_number}</p>
+            <p className="text-gray-500 mb-6">رقم الطلب: {lastOrder?.order_number || '-'}</p>
             
             {lastOrder && (
               <div className="bg-gray-50 rounded-input p-4 text-right space-y-3">
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">التاريخ</span>
-                  <span>{new Date(lastOrder.created_at).toLocaleString('ar-SA')}</span>
+                  <span>{lastOrder?.created_at ? new Date(lastOrder.created_at).toLocaleString('ar-SA') : '-'}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">عدد الأصناف</span>
-                  <span>{lastOrder.items.length}</span>
+                  <span>{Array.isArray(lastOrder.items) ? lastOrder.items.length : 0}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">المجموع الفرعي</span>
-                  <span>{lastOrder.subtotal.toFixed(2)} د.أ</span>
+                  <span>{toSafeNumber(lastOrder.subtotal).toFixed(2)} د.أ</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">الضريبة</span>
-                  <span>{lastOrder.tax_amount.toFixed(2)} د.أ</span>
+                  <span>{toSafeNumber(lastOrder.tax_amount).toFixed(2)} د.أ</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2">
                   <span>الإجمالي</span>
-                  <span className="text-playful-green">{lastOrder.total_amount.toFixed(2)} د.أ</span>
+                  <span className="text-playful-green">{toSafeNumber(lastOrder.total_amount).toFixed(2)} د.أ</span>
                 </div>
               </div>
             )}
