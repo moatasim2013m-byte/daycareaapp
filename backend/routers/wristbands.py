@@ -153,11 +153,12 @@ async def scan_wristband(
     if wristband.get("status") == "expired":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wristband is expired")
 
+    if wristband.get("status") == "active" and wristband.get("activated_at"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Wristband already active")
+
     now_iso = datetime.now(timezone.utc).isoformat()
-    already_active = wristband.get("status") == "active" and wristband.get("activated_at")
     update = {"status": "active"}
-    if not already_active:
-        update["activated_at"] = now_iso
+    update["activated_at"] = now_iso
 
     await db.wristbands.update_one({"id": wristband["id"]}, {"$set": update})
 

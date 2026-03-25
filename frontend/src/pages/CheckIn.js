@@ -48,6 +48,7 @@ const CheckIn = () => {
   const [wristbandScanResult, setWristbandScanResult] = useState(null);
   const [wristbandError, setWristbandError] = useState('');
   const [wristbandLookup, setWristbandLookup] = useState(null);
+  const [wristbandInfo, setWristbandInfo] = useState('');
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -323,10 +324,22 @@ const CheckIn = () => {
     return status || 'غير معروف';
   };
 
+  const getWristbandErrorMessage = (error, fallback) => {
+    const detail = error?.response?.data?.detail;
+    if (!detail) return fallback;
+    if (detail === 'Wristband already active') return 'هذا السوار مفعل بالفعل ولا يمكن تفعيله مرتين';
+    if (detail === 'Wristband not found') return 'السوار غير موجود';
+    if (detail === 'Invalid wristband code') return 'كود السوار غير صالح';
+    if (detail === 'Session not found for wristband') return 'لا توجد جلسة مرتبطة بهذا السوار';
+    if (detail === 'wristband_id or code is required') return 'يجب تمرير كود السوار أو رقم السوار';
+    return detail;
+  };
+
   const handleAssignWristband = async () => {
     if (!assignSessionId || !selectedBranch) return;
 
     setWristbandError('');
+    setWristbandInfo('');
     setLoading(true);
     try {
       const selectedSession = activeSessions.find((session) => session.session_id === assignSessionId);
@@ -338,9 +351,10 @@ const CheckIn = () => {
       setAssignedWristband(response.data);
       setWristbandLookup(response.data);
       setWristbandScanResult(null);
+      setWristbandInfo('تم تعيين السوار بنجاح. الحالة الآن: مخصص (بانتظار المسح).');
       await fetchActiveSessions();
     } catch (error) {
-      setWristbandError(error.response?.data?.detail || 'تعذر إصدار السوار');
+      setWristbandError(getWristbandErrorMessage(error, 'تعذر إصدار السوار'));
     } finally {
       setLoading(false);
     }
@@ -353,6 +367,7 @@ const CheckIn = () => {
     }
 
     setWristbandError('');
+    setWristbandInfo('');
     setLoading(true);
     try {
       const lookupResponse = await api.get('/wristbands', {
@@ -362,7 +377,7 @@ const CheckIn = () => {
 
       if (lookupResponse.data.status === 'active') {
         setWristbandScanResult(null);
-        setWristbandError('هذا السوار مفعل بالفعل');
+        setWristbandError('هذا السوار مفعل بالفعل ولا يمكن تفعيله مرتين');
         return;
       }
 
@@ -371,22 +386,26 @@ const CheckIn = () => {
       });
       setWristbandScanResult(response.data);
       setWristbandLookup(response.data);
+      setWristbandInfo('تمت قراءة الكود وتفعيل السوار، وتم ربط الجلسة كجلسة نشطة.');
       await fetchActiveSessions();
     } catch (error) {
       setWristbandScanResult(null);
       setWristbandLookup(null);
-      setWristbandError(error.response?.data?.detail || 'تعذر تفعيل السوار');
+      setWristbandError(getWristbandErrorMessage(error, 'تعذر تفعيل السوار'));
     } finally {
       setLoading(false);
     }
   };
 
-  const getSessionActivationLabel = (session) => {
-    if (session?.session_active) {
-      return 'نشطة';
-    }
-    return 'بانتظار التفعيل';
+  const getWristbandStateMeta = (status) => {
+    const normalized = `${status || ''}`.toLowerCase();
+    if (normalized === 'active') return { label: 'نشط', color: 'text-playful-green' };
+    if (normalized === 'issued') return { label: 'مخصص', color: 'text-playful-blue' };
+    if (normalized === 'expired' || normalized === 'used') return { label: 'منتهي', color: 'text-playful-orange' };
+    return { label: 'غير مخصص', color: 'text-gray-500' };
   };
+
+  const getSessionActivationLabel = (session) => (session?.session_active ? 'نشطة' : 'بانتظار التفعيل');
 
   return (
     <div className="peek-page peek-role-admin" dir="rtl">
@@ -624,6 +643,7 @@ const CheckIn = () => {
                     {activeSessions.map((session) => {
                       const { elapsed, included, overdue, overtimeAmount, isOverdue } = getOverdueMeta(session);
                       const currentCost = toSafeNumber(session.amount_charged, overtimeAmount);
+                      const wristbandState = getWristbandStateMeta(session.wristband_status);
                       return (
                       <div
                         key={session.session_id}
@@ -641,6 +661,18 @@ const CheckIn = () => {
                             الحالة: {isOverdue ? 'وقت إضافي' : 'ضمن الوقت'}
                           </p>
                           <p className="text-xs text-gray-500">التكلفة الحالية: {formatMoney(currentCost)}</p>
+                          <p className={`text-xs font-semibold ${wristbandState.color}`}>
+                            السوار: {wristbandState.label}
+                            {session.wristband_code ? ` (${session.wristband_code})` : ''}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            تفعيل الجلسة: {getSessionActivationLabel(session)}
+                          </p>
+                          {session.session_started_at && (
+                            <p className="text-xs text-gray-500">
+                              وقت بدء الجلسة: {formatTime(session.session_started_at)}
+                            </p>
+                          )}
                           {isOverdue && (
                             <>
                               <p className="text-xs text-playful-orange font-semibold">
@@ -710,8 +742,16 @@ const CheckIn = () => {
                 {assignedWristband && (
                   <div className="border rounded-lg p-3 space-y-2 bg-gray-50">
                     <p className="text-sm">الكود: <strong>{assignedWristband.code}</strong></p>
-                    <p className="text-xs text-gray-600">الحالة: {assignedWristband.status || 'issued'}</p>
+                    <p className="text-xs text-gray-600">الجلسة: {assignedWristband.session_id || '-'}</p>
+                    <p className="text-xs text-gray-600">حالة السوار: {getWristbandStateMeta(assignedWristband.status).label}</p>
+                    <p className="text-xs text-gray-600">حالة الجلسة: {getSessionActivationLabel({ session_active: false })}</p>
                     <img src={assignedWristband.qr_code_url} alt="Wristband QR" className="w-40 h-40 mx-auto" />
+                  </div>
+                )}
+
+                {wristbandInfo && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    {wristbandInfo}
                   </div>
                 )}
 
@@ -741,16 +781,16 @@ const CheckIn = () => {
                 {wristbandLookup && (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
                     <p>الجلسة: <strong>{wristbandLookup.session_id || '-'}</strong></p>
-                    <p>حالة السوار: <strong>{wristbandLookup.status || '-'}</strong></p>
+                    <p>حالة السوار: <strong>{getWristbandStateMeta(wristbandLookup.status).label}</strong></p>
                     <p>وقت التفعيل: <strong>{wristbandLookup.activated_at ? formatTime(wristbandLookup.activated_at) : 'غير مفعل'}</strong></p>
                   </div>
                 )}
 
                 {wristbandScanResult && (
                   <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
-                    <p>تم تفعيل الجلسة بنجاح</p>
+                    <p>تم تفعيل السوار والجلسة بنجاح</p>
                     <p>الجلسة: {wristbandScanResult.session_id}</p>
-                    <p>الحالة: {wristbandScanResult.status}</p>
+                    <p>حالة السوار: {getWristbandStateMeta(wristbandScanResult.status).label}</p>
                   </div>
                 )}
               </CardContent>
