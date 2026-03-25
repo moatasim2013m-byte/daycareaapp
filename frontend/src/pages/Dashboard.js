@@ -15,6 +15,11 @@ const toSafeArray = (value) => (Array.isArray(value) ? value : []);
 
 const money = (amount) => `${toSafeNumber(amount).toFixed(2)} د.أ`;
 
+const formatDateTime = (value) => {
+  const parsed = safeIsoDate(value);
+  return parsed ? parsed.toLocaleString() : 'وقت غير متاح';
+};
+
 const safeIsoDate = (value) => {
   if (!value) return null;
   const parsed = new Date(value);
@@ -40,6 +45,7 @@ const Dashboard = () => {
   const [children, setChildren] = useState([]);
   const [deviceStatuses, setDeviceStatuses] = useState([]);
   const [errors, setErrors] = useState([]);
+  const [successfulSources, setSuccessfulSources] = useState([]);
 
   const safeChildren = Array.isArray(children) ? children : [];
 
@@ -63,10 +69,12 @@ const Dashboard = () => {
 
           const payloadByKey = {};
           const failures = [];
+          const successful = [];
           settled.forEach((result, idx) => {
             const descriptor = adminRequests[idx];
             if (result.status === 'fulfilled') {
               payloadByKey[descriptor.key] = result.value?.data;
+              successful.push(descriptor.label);
             } else {
               payloadByKey[descriptor.key] = null;
               failures.push(descriptor.label);
@@ -90,6 +98,7 @@ const Dashboard = () => {
 
           setDeviceStatuses(toSafeArray(payloadByKey.deviceStatus));
           setErrors(failures);
+          setSuccessfulSources(successful);
         } else {
           const childrenRes = await api.get('/children');
           setChildren(Array.isArray(childrenRes.data) ? childrenRes.data : []);
@@ -108,6 +117,8 @@ const Dashboard = () => {
 
   const openOrders = toSafeArray(dashboardOps.openOrders);
   const paidOrders = toSafeArray(dashboardOps.paidOrders);
+  const activeSubscriptions = toSafeArray(dashboardOps.activeSubscriptions);
+  const activeCheckins = toSafeArray(dashboardOps.activeCheckins);
   const overtimeSensitiveOrders = openOrders.filter((order) => {
     const joinedItems = toSafeArray(order?.items)
       .map((item) => `${item?.product_name_en || ''} ${item?.product_name_ar || ''}`.toLowerCase())
@@ -124,11 +135,38 @@ const Dashboard = () => {
   const onlineDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'online').length;
   const offlineDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'offline').length;
   const maintenanceDevices = deviceStatuses.filter((device) => device?.effectiveStatus === 'maintenance').length;
+  const totalDevices = deviceStatuses.length;
   const todayIso = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const paidOrderRevenue = paidOrders.reduce((sum, order) => sum + toSafeNumber(order?.total_amount), 0);
+  const paidRevenueToday = paidOrders.reduce((sum, order) => {
+    const paidAt = safeIsoDate(order?.paid_at || order?.created_at);
+    return paidAt && paidAt.toISOString().slice(0, 10) === todayIso ? sum + toSafeNumber(order?.total_amount) : sum;
+  }, 0);
+  const paidRevenueWeek = paidOrders.reduce((sum, order) => {
+    const paidAt = safeIsoDate(order?.paid_at || order?.created_at);
+    return paidAt && paidAt >= weekStart ? sum + toSafeNumber(order?.total_amount) : sum;
+  }, 0);
+  const paidRevenueMonth = paidOrders.reduce((sum, order) => {
+    const paidAt = safeIsoDate(order?.paid_at || order?.created_at);
+    return paidAt && paidAt >= monthStart ? sum + toSafeNumber(order?.total_amount) : sum;
+  }, 0);
+
+  const subscriptionRevenueSignal = activeSubscriptions.reduce((sum, sub) => {
+    return sum + toSafeNumber(sub?.amount_paid || sub?.amount || sub?.price || sub?.total_amount);
+  }, 0);
   const upcomingEvents = toSafeArray(dashboardOps.upcomingEvents).filter((event) => {
     const eventDate = safeIsoDate(event?.date);
     return eventDate && eventDate.toISOString().slice(0, 10) >= todayIso && event?.status !== 'cancelled';
   });
+  const eventRevenueSignal = upcomingEvents.reduce((sum, event) => {
+    return sum + toSafeNumber(event?.price || event?.amount || event?.revenue || event?.booking_total);
+  }, 0);
   const upcomingEventsByStatus = upcomingEvents.reduce((acc, event) => {
     const status = event?.status || 'unknown';
     acc[status] = (acc[status] || 0) + 1;
@@ -147,6 +185,10 @@ const Dashboard = () => {
     const revenueMetrics = analytics.revenue?.metrics || {};
     const attendanceMetrics = analytics.attendance?.metrics || {};
     const sessionsMetrics = analytics.sessions?.metrics || {};
+    const eventSummaryAvailable = upcomingEvents.length > 0 || successfulSources.includes('الفعاليات');
+    const todayRevenueValue = revenueMetrics.revenue_today || dashboardOps.dailySummary?.revenue?.total || paidRevenueToday;
+    const weeklyRevenueValue = revenueMetrics.revenue_this_week || paidRevenueWeek;
+    const monthlyRevenueValue = revenueMetrics.revenue_this_month || paidRevenueMonth;
 
     return (
       <div className="peek-page peek-role-admin" dir="rtl">
@@ -154,7 +196,7 @@ const Dashboard = () => {
           <div className="peek-header peek-header--admin flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">لوحة تحليلات الأعمال</h1>
-              <p className="text-gray-500">تحليلات الإيرادات والجلسات والحضور في الوقت الحقيقي</p>
+              <p className="text-gray-500">مركز قيادة الإيرادات والتشغيل للحضانة والملعب الداخلي</p>
             </div>
             <Button asChild variant="outline">
               <Link to="/guides/parent-communication-step-4">دليل التواصل مع أولياء الأمور</Link>
@@ -172,23 +214,23 @@ const Dashboard = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد اليوم</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_today)}</p></div><DollarSign className="w-10 h-10 text-emerald-500" /></div></CardContent></Card>
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد هذا الأسبوع</p><p className="peek-kpi-value mt-1">{money(revenueMetrics.revenue_this_week)}</p></div><LineChart className="w-10 h-10 text-violet-500" /></div></CardContent></Card>
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">الجلسات النشطة الآن</p><p className="peek-kpi-value mt-1">{toSafeNumber(sessionsMetrics.active_sessions)}</p></div><Activity className="w-10 h-10 text-blue-500" /></div></CardContent></Card>
-            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">زيارات اليوم</p><p className="peek-kpi-value mt-1">{toSafeNumber(attendanceMetrics.visits_today)}</p></div><Users className="w-10 h-10 text-orange-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد اليوم</p><p className="peek-kpi-value mt-1">{money(todayRevenueValue)}</p><p className="text-xs text-gray-500 mt-2">من التحليلات/الملخص/المدفوعات</p></div><DollarSign className="w-10 h-10 text-emerald-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">إيراد هذا الأسبوع</p><p className="peek-kpi-value mt-1">{money(weeklyRevenueValue)}</p><p className="text-xs text-gray-500 mt-2">إشارة شهرية: {money(monthlyRevenueValue)}</p></div><LineChart className="w-10 h-10 text-violet-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">الجلسات النشطة الآن</p><p className="peek-kpi-value mt-1">{toSafeNumber(sessionsMetrics.active_sessions || activeCheckins.length)}</p><p className="text-xs text-gray-500 mt-2">Check-in نشط: {activeCheckins.length}</p></div><Activity className="w-10 h-10 text-blue-500" /></div></CardContent></Card>
+            <Card className="peek-kpi peek-role-panel-admin"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-gray-500 text-sm">زيارات اليوم</p><p className="peek-kpi-value mt-1">{toSafeNumber(attendanceMetrics.visits_today)}</p><p className="text-xs text-gray-500 mt-2">فعاليات قادمة: {upcomingEvents.length}</p></div><Users className="w-10 h-10 text-orange-500" /></div></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShoppingBag className="w-4 h-4 text-blue-500" />طلبات مفتوحة/غير مدفوعة</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{openOrders.length}</p></CardContent></Card>
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="w-4 h-4 text-playful-orange" />طلبات وقت إضافي</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{overtimeSensitiveOrders.length}</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="w-4 h-4 text-indigo-500" />اشتراكات نشطة</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{dashboardOps.activeSubscriptions.length}</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="w-4 h-4 text-teal-500" />إيراد يومي (ملخص)</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(dashboardOps.dailySummary?.revenue?.total)}</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="w-4 h-4 text-indigo-500" />اشتراكات نشطة</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{activeSubscriptions.length}</p><p className="text-xs text-gray-500 mt-2">إشارة إيراد: {money(subscriptionRevenueSignal || revenueMetrics.membership_revenue || dashboardOps.dailySummary?.revenue?.subscriptions)}</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="w-4 h-4 text-teal-500" />المدفوعات المحصّلة</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{money(paidOrderRevenue)}</p><p className="text-xs text-gray-500 mt-2">إجمالي آخر المدفوعات المسترجعة</p></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">ملخص المناطق</CardTitle></CardHeader><CardContent className="space-y-2">{Object.keys(zonesSummary).length === 0 ? <p className="text-sm text-gray-500">لا توجد بيانات مناطق</p> : Object.entries(zonesSummary).map(([name, count]) => (<div key={name} className="flex items-center justify-between text-sm"><span>{name}</span><strong>{count}</strong></div>))}</CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">جلسات دخول اليوم</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{dashboardOps.activeCheckins.length}</p><p className="text-xs text-gray-500 mt-2">جلسات check-in النشطة حالياً</p></CardContent></Card>
-            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">إشارات الإيراد</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex items-center justify-between"><span>اشتراكات</span><strong>{money(revenueMetrics.membership_revenue || dashboardOps.dailySummary?.revenue?.subscriptions)}</strong></div><div className="flex items-center justify-between"><span>باقات/زيارة</span><strong>{money(dashboardOps.dailySummary?.revenue?.visit_packs)}</strong></div><div className="flex items-center justify-between"><span>فعاليات</span><strong>{money(revenueMetrics.event_bookings_revenue)}</strong></div></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">جلسات دخول اليوم</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{activeCheckins.length}</p><p className="text-xs text-gray-500 mt-2">جلسات check-in النشطة حالياً</p></CardContent></Card>
+            <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">إشارات الإيراد</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex items-center justify-between"><span>اشتراكات</span><strong>{money(subscriptionRevenueSignal || revenueMetrics.membership_revenue || dashboardOps.dailySummary?.revenue?.subscriptions)}</strong></div><div className="flex items-center justify-between"><span>باقات/زيارة</span><strong>{money(dashboardOps.dailySummary?.revenue?.visit_packs)}</strong></div><div className="flex items-center justify-between"><span>فعاليات</span><strong>{money(eventRevenueSignal || revenueMetrics.event_bookings_revenue)}</strong></div></CardContent></Card>
             <Card className="peek-card peek-role-panel-admin"><CardHeader><CardTitle className="text-base">ملخص الفعاليات القادمة</CardTitle></CardHeader><CardContent>{upcomingEvents.length === 0 ? <p className="text-sm text-gray-500">لا توجد فعاليات قادمة حالياً</p> : <div className="space-y-2"><p className="text-2xl font-bold">{upcomingEvents.length}</p>{Object.entries(upcomingEventsByStatus).map(([status, count]) => (<div key={status} className="flex items-center justify-between text-sm"><span>{status}</span><strong>{count}</strong></div>))}</div>}</CardContent></Card>
           </div>
 
@@ -208,7 +250,7 @@ const Dashboard = () => {
                         </div>
                         <div className="text-left">
                           <div className="font-semibold">{money(order.total_amount)}</div>
-                          <div className="text-xs text-gray-500">{safeIsoDate(order.paid_at || order.created_at)?.toLocaleString() || 'وقت غير متاح'}</div>
+                          <div className="text-xs text-gray-500">{formatDateTime(order.paid_at || order.created_at)}</div>
                         </div>
                       </div>
                     ))}
@@ -225,6 +267,7 @@ const Dashboard = () => {
                   <div className="p-3 rounded-lg bg-amber-50 text-amber-700 text-center"><div className="text-xs">Maintenance</div><div className="text-xl font-semibold">{maintenanceDevices}</div></div>
                   <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-center"><div className="text-xs">Offline</div><div className="text-xl font-semibold">{offlineDevices}</div></div>
                 </div>
+                <p className="text-xs text-gray-500 mb-3">إجمالي الأجهزة المسجلة: {totalDevices}</p>
                 {deviceStatuses.length === 0 ? (
                   <div className="text-sm text-gray-500">لا توجد أجهزة مسجلة حالياً</div>
                 ) : (
@@ -245,6 +288,14 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+          {!eventSummaryAvailable && (
+            <Card className="peek-card peek-role-panel-admin border-dashed">
+              <CardContent className="p-4 text-sm text-gray-500">
+                بيانات الفعاليات غير متاحة حالياً. عند توفرها ستظهر مؤشرات الفعاليات والإيراد المرتبط بها هنا.
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     );
