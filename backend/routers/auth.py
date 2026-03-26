@@ -3,9 +3,11 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from models.user import User, UserCreate, UserLogin, UserResponse, TokenResponse
 from middleware.auth import create_token, get_current_user
 from datetime import datetime, timezone
+import logging
 import bcrypt
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 def get_db():
@@ -68,52 +70,85 @@ async def login(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Login and get access token"""
+    if not credentials.email or not credentials.password:
+        logger.warning("Login rejected due to malformed credentials payload")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="البيانات المدخلة غير صالحة"
+        )
+
+    normalized_email = credentials.email.strip().lower()
+
     # Find user
-    user_doc = await db.users.find_one({"email": credentials.email.lower()}, {"_id": 0})
+    user_doc = await db.users.find_one({"email": normalized_email}, {"_id": 0})
     if not user_doc:
+        logger.warning("Login failed: user not found", extra={"email": normalized_email})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="بيانات الدخول غير صحيحة"  # Invalid credentials
         )
-    
-    # Check password
-    if not bcrypt.checkpw(credentials.password.encode(), user_doc["password_hash"].encode()):
+
+    password_hash = user_doc.get("password_hash")
+    if not password_hash:
+        logger.warning("Login failed: account missing password hash", extra={"email": normalized_email})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="بيانات الدخول غير صحيحة"
         )
-    
+
+    # Check password
+    if not bcrypt.checkpw(credentials.password.encode(), str(password_hash).encode()):
+        logger.warning("Login failed: invalid password", extra={"email": normalized_email})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="بيانات الدخول غير صحيحة"
+        )
+
     # Check if active
     if not user_doc.get("is_active", True):
+        logger.warning("Login failed: account disabled", extra={"email": normalized_email})
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="الحساب معطل"  # Account disabled
         )
-    
+
+    user_id = user_doc.get("user_id")
+    if not user_id:
+        logger.warning("Login failed: account missing user_id", extra={"email": normalized_email})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="بيانات الدخول غير صحيحة"
+        )
+
     # Update last login
     await db.users.update_one(
-        {"user_id": user_doc["user_id"]},
+        {"user_id": user_id},
         {"$set": {"last_login_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
+
     # Create token
-    token = create_token(user_doc["user_id"], user_doc["email"], user_doc["role"])
-    
+    token = create_token(user_id, user_doc.get("email", normalized_email), user_doc.get("role", "PARENT"))
+
     # Parse created_at
     created_at = user_doc.get("created_at")
     if isinstance(created_at, str):
-        created_at = datetime.fromisoformat(created_at)
-    
+        try:
+            created_at = datetime.fromisoformat(created_at)
+        except ValueError:
+            created_at = datetime.now(timezone.utc)
+    if not isinstance(created_at, datetime):
+        created_at = datetime.now(timezone.utc)
+
     user_response = UserResponse(
-        user_id=user_doc["user_id"],
-        email=user_doc["email"],
-        display_name=user_doc["display_name"],
+        user_id=user_id,
+        email=user_doc.get("email", normalized_email),
+        display_name=user_doc.get("display_name", normalized_email),
         phone=user_doc.get("phone"),
-        role=user_doc["role"],
+        role=user_doc.get("role", "PARENT"),
         is_active=user_doc.get("is_active", True),
         created_at=created_at
     )
-    
+
     return TokenResponse(access_token=token, user=user_response)
 
 
