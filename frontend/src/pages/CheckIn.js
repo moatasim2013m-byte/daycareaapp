@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -21,17 +22,21 @@ import {
   Baby,
   User,
   Phone,
-  Calendar,
   FileCheck,
   LogIn,
   LogOut,
   Crown,
   Scan,
-  Receipt
+  Receipt,
+  RefreshCw,
+  ShoppingCart,
+  CalendarDays,
+  Radio
 } from 'lucide-react';
 
 const CheckIn = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [cardNumber, setCardNumber] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -49,6 +54,11 @@ const CheckIn = () => {
   const [wristbandError, setWristbandError] = useState('');
   const [wristbandLookup, setWristbandLookup] = useState(null);
   const [wristbandInfo, setWristbandInfo] = useState('');
+  const [recentSessions, setRecentSessions] = useState([]);
+  const [todayEvents, setTodayEvents] = useState([]);
+  const [deviceStatuses, setDeviceStatuses] = useState([]);
+  const [commandCenterLoading, setCommandCenterLoading] = useState(false);
+  const [commandCenterErrors, setCommandCenterErrors] = useState({ history: '', events: '', devices: '' });
   const [, setClockTick] = useState(0);
   
   // Registration form
@@ -94,12 +104,46 @@ const CheckIn = () => {
     }
   }, [selectedBranch]);
 
+
+  const fetchCommandCenterData = useCallback(async () => {
+    if (!selectedBranch?.branch_id) return;
+    setCommandCenterLoading(true);
+
+    const [historyResult, eventsResult, devicesResult] = await Promise.allSettled([
+      api.get('/checkin/history', { params: { branch_id: selectedBranch.branch_id, limit: 8 } }),
+      api.get('/events', { params: { branchId: selectedBranch.branch_id } }),
+      api.get('/devices/status', { params: { branchId: selectedBranch.branch_id } }),
+    ]);
+
+    setRecentSessions(historyResult.status === 'fulfilled' ? safeArray(historyResult.value?.data) : []);
+
+    if (eventsResult.status === 'fulfilled') {
+      const normalizedEvents = safeArray(eventsResult.value?.data).filter((eventItem) => {
+        const eventDate = `${eventItem?.date || ''}`.trim();
+        if (!eventDate) return false;
+        return eventDate >= new Date().toISOString().slice(0, 10);
+      });
+      setTodayEvents(normalizedEvents.slice(0, 5));
+    } else {
+      setTodayEvents([]);
+    }
+
+    setDeviceStatuses(devicesResult.status === 'fulfilled' ? safeArray(devicesResult.value?.data) : []);
+    setCommandCenterErrors({
+      history: historyResult.status === 'rejected' ? 'تعذر تحميل آخر الحركات' : '',
+      events: eventsResult.status === 'rejected' ? 'تعذر تحميل فعاليات اليوم' : '',
+      devices: devicesResult.status === 'rejected' ? 'تعذر تحميل حالة الأجهزة' : '',
+    });
+    setCommandCenterLoading(false);
+  }, [selectedBranch]);
+
   // Fetch active sessions
   useEffect(() => {
     if (selectedBranch) {
       fetchActiveSessions();
+      fetchCommandCenterData();
     }
-  }, [selectedBranch, fetchActiveSessions]);
+  }, [selectedBranch, fetchActiveSessions, fetchCommandCenterData]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -158,7 +202,8 @@ const CheckIn = () => {
       setCardNumber('');
       setScanResult(null);
       fetchActiveSessions();
-      
+      fetchCommandCenterData();
+
       if (cardInputRef.current) {
         cardInputRef.current.focus();
       }
@@ -188,6 +233,7 @@ const CheckIn = () => {
       setCheckoutResult({ ...data, overtime_order_status: overtimeOrderStatus });
 
       fetchActiveSessions();
+      fetchCommandCenterData();
       setScanResult(null);
       setCardNumber('');
       cardInputRef.current?.focus();
@@ -303,6 +349,8 @@ const CheckIn = () => {
 
   const formatMinutesLabel = (value) => `${Math.max(0, toSafeNumber(value))} دقيقة`;
 
+  const safeArray = (value) => (Array.isArray(value) ? value : []);
+
   const getOvertimeEstimate = (overdueMinutes) => {
     const safeOverdue = Math.max(0, toSafeNumber(overdueMinutes));
     if (safeOverdue <= 0) return 0;
@@ -353,6 +401,7 @@ const CheckIn = () => {
       setWristbandScanResult(null);
       setWristbandInfo('تم تعيين السوار بنجاح. الحالة الآن: مخصص (بانتظار المسح).');
       await fetchActiveSessions();
+      fetchCommandCenterData();
     } catch (error) {
       setWristbandError(getWristbandErrorMessage(error, 'تعذر إصدار السوار'));
     } finally {
@@ -388,6 +437,7 @@ const CheckIn = () => {
       setWristbandLookup(response.data);
       setWristbandInfo('تمت قراءة الكود وتفعيل السوار، وتم ربط الجلسة كجلسة نشطة.');
       await fetchActiveSessions();
+      fetchCommandCenterData();
     } catch (error) {
       setWristbandScanResult(null);
       setWristbandLookup(null);
@@ -406,6 +456,25 @@ const CheckIn = () => {
   };
 
   const getSessionActivationLabel = (session) => (session?.session_active ? 'نشطة' : 'بانتظار التفعيل');
+
+  const getSessionOperationalState = (session) => {
+    const { isOverdue } = getOverdueMeta(session || {});
+    if (isOverdue && `${session?.overtime_order_status || ''}`.toUpperCase() !== 'PAID') return 'وقت إضافي غير مدفوع';
+    if (isOverdue) return 'وقت إضافي';
+    if (!session?.session_active) return 'بانتظار تفعيل السوار';
+    return 'جلسة نشطة';
+  };
+
+  const pendingOperationalItems = safeArray(activeSessions).filter((session) => {
+    const { isOverdue } = getOverdueMeta(session || {});
+    const unpaidOvertime = isOverdue && `${session?.overtime_order_status || ''}`.toUpperCase() !== 'PAID';
+    return unpaidOvertime || !session?.session_active;
+  }).length;
+
+  const onlineDevices = safeArray(deviceStatuses).filter((device) => {
+    const effective = `${device?.effectiveStatus || device?.status || ''}`.toLowerCase();
+    return effective === 'online';
+  }).length;
 
   return (
     <div className="peek-page peek-role-admin" dir="rtl">
@@ -426,10 +495,116 @@ const CheckIn = () => {
         </div>
       </div>
 
-      <div className="peek-shell max-w-7xl">
+      <div className="peek-shell max-w-7xl space-y-6">
+        <Card className="peek-card border-2 border-gray-200">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Radio className="w-5 h-5 text-playful-blue" />
+                لوحة استقبال اليوم
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchCommandCenterData} disabled={commandCenterLoading}>
+                <RefreshCw className={`w-4 h-4 ml-1 ${commandCenterLoading ? 'animate-spin' : ''}`} />
+                تحديث
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-gray-50 rounded-input p-3">
+                <p className="text-xs text-gray-500">الأطفال داخل الملعب</p>
+                <p className="text-xl font-bold">{safeArray(activeSessions).length}</p>
+              </div>
+              <div className="bg-playful-orange/10 rounded-input p-3">
+                <p className="text-xs text-gray-500">حالات تحتاج متابعة</p>
+                <p className="text-xl font-bold text-playful-orange">{pendingOperationalItems}</p>
+              </div>
+              <div className="bg-playful-blue/10 rounded-input p-3">
+                <p className="text-xs text-gray-500">فعاليات قادمة</p>
+                <p className="text-xl font-bold text-playful-blue">{safeArray(todayEvents).length}</p>
+              </div>
+              <div className="bg-playful-green/10 rounded-input p-3">
+                <p className="text-xs text-gray-500">أجهزة أونلاين</p>
+                <p className="text-xl font-bold text-playful-green">{onlineDevices}/{safeArray(deviceStatuses).length}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-input border p-3 space-y-2">
+                <p className="font-semibold text-sm">آخر حركات الدخول/الخروج</p>
+                {commandCenterErrors.history && <p className="text-xs text-playful-red">{commandCenterErrors.history}</p>}
+                {!commandCenterErrors.history && safeArray(recentSessions).length === 0 && (
+                  <p className="text-xs text-gray-500">لا توجد حركات حديثة.</p>
+                )}
+                {safeArray(recentSessions).slice(0, 4).map((session) => (
+                  <p className="text-xs text-gray-600" key={session.session_id}>
+                    {session.child_name || 'طفل'} — {session.status === 'CHECKED_IN' ? 'دخول' : 'خروج'} ({formatTime(session.check_in_time)})
+                  </p>
+                ))}
+              </div>
+
+              <div className="rounded-input border p-3 space-y-2">
+                <p className="font-semibold text-sm">الفعاليات</p>
+                {commandCenterErrors.events && <p className="text-xs text-playful-red">{commandCenterErrors.events}</p>}
+                {!commandCenterErrors.events && safeArray(todayEvents).length === 0 && (
+                  <p className="text-xs text-gray-500">لا توجد فعاليات اليوم أو القادمة.</p>
+                )}
+                {safeArray(todayEvents).slice(0, 3).map((eventItem) => (
+                  <p className="text-xs text-gray-600" key={eventItem.id || `${eventItem.title}-${eventItem.date}`}>
+                    {eventItem.title || eventItem.name || 'فعالية'} — {eventItem.date || '-'}
+                  </p>
+                ))}
+              </div>
+
+              <div className="rounded-input border p-3 space-y-2">
+                <p className="font-semibold text-sm">حالة الأجهزة والسوار</p>
+                {commandCenterErrors.devices && <p className="text-xs text-playful-red">{commandCenterErrors.devices}</p>}
+                {!commandCenterErrors.devices && safeArray(deviceStatuses).length === 0 && (
+                  <p className="text-xs text-gray-500">لا توجد أجهزة مرتبطة بهذا الفرع.</p>
+                )}
+                {safeArray(deviceStatuses).slice(0, 3).map((device) => (
+                  <p className="text-xs text-gray-600" key={device.id}>
+                    {device.deviceType || 'device'} — {`${device.effectiveStatus || device.status || ''}`.toLowerCase() === 'online' ? 'أونلاين' : 'أوفلاين'}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card Scan Section */}
           <div className="lg:col-span-2 space-y-6">
+            <Card className="peek-card border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-playful-blue" />
+                  إجراءات سريعة للاستقبال
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Button onClick={() => cardInputRef.current?.focus()} className="h-12 rounded-button bg-playful-blue hover:bg-playful-blue/90 text-white">
+                  <LogIn className="w-4 h-4 ml-2" />
+                  بدء تسجيل دخول
+                </Button>
+                <Button
+                  onClick={() => {
+                    const targetSession = safeArray(activeSessions).find((session) => getOverdueMeta(session).isOverdue) || safeArray(activeSessions)[0];
+                    if (targetSession?.session_id) handleCheckOut(targetSession.session_id);
+                  }}
+                  disabled={safeArray(activeSessions).length === 0 || loading}
+                  className="h-12 rounded-button bg-playful-orange hover:bg-playful-orange/90 text-white"
+                >
+                  <LogOut className="w-4 h-4 ml-2" />
+                  تسجيل خروج سريع
+                </Button>
+                <Button onClick={() => navigate('/pos')} variant="outline" className="h-12 rounded-button">
+                  <ShoppingCart className="w-4 h-4 ml-2" />
+                  فتح نقطة البيع
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Scan Card */}
             <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
@@ -658,7 +833,7 @@ const CheckIn = () => {
                           <p className="text-xs text-gray-500">الوقت المنقضي: {formatMinutesLabel(elapsed)}</p>
                           <p className="text-xs text-gray-500">الوقت المشمول: {formatMinutesLabel(included)}</p>
                           <p className="text-xs text-gray-500">
-                            الحالة: {isOverdue ? 'وقت إضافي' : 'ضمن الوقت'}
+                            الحالة التشغيلية: {getSessionOperationalState(session)}
                           </p>
                           <p className="text-xs text-gray-500">التكلفة الحالية: {formatMoney(currentCost)}</p>
                           <p className={`text-xs font-semibold ${wristbandState.color}`}>
@@ -672,6 +847,9 @@ const CheckIn = () => {
                             <p className="text-xs text-gray-500">
                               وقت بدء الجلسة: {formatTime(session.session_started_at)}
                             </p>
+                          )}
+                          {session.event_name && (
+                            <p className="text-xs text-gray-500">الفعالية المرتبطة: {session.event_name}</p>
                           )}
                           {isOverdue && (
                             <>
