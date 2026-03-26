@@ -14,6 +14,7 @@ from models.event_booking import (
     EventResponse,
 )
 from services.notification_service import maybe_send_whatsapp_notification
+from utils.audit import log_audit
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
