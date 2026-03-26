@@ -6,7 +6,7 @@ from models.session import Session
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
 from services.event_logger import eventLogger
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import random
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -300,8 +300,8 @@ async def _pay_order(order_id: str, payment: Optional[PaymentCreate], user: dict
             "orderId": order_id,
             "metadata": {
                 "payment_id": payment_record.payment_id,
-                "method": payment.method,
-                "amount": payment.amount,
+                "method": method,
+                "amount": amount,
                 "status": "COMPLETED",
             },
         },

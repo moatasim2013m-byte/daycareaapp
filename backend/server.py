@@ -199,10 +199,12 @@ from routers import (
     checkin,
     children,
     customers,
+    devices,
     entitlements,
     events,
     households,
     orders,
+    parent_portal,
     products,
     reports,
     sessions,
@@ -228,10 +230,12 @@ api_router.include_router(orders.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(sessions.router)
 api_router.include_router(checkin.router)
+api_router.include_router(devices.router)
 api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
 api_router.include_router(analytics.router)
+api_router.include_router(parent_portal.router)
 api_router.include_router(users.router)
 api_router.include_router(branches.router)
 api_router.include_router(zones.router)
