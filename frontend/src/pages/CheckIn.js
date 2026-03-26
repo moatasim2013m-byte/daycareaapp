@@ -60,6 +60,8 @@ const CheckIn = () => {
   const [commandCenterLoading, setCommandCenterLoading] = useState(false);
   const [commandCenterErrors, setCommandCenterErrors] = useState({ history: '', events: '', devices: '' });
   const [, setClockTick] = useState(0);
+  const wristbandSectionRef = useRef(null);
+  const sessionsSectionRef = useRef(null);
   
   // Registration form
   const [registerForm, setRegisterForm] = useState({
@@ -81,10 +83,11 @@ const CheckIn = () => {
     const fetchBranches = async () => {
       try {
         const response = await api.get('/branches');
-        setBranches(response.data);
-        if (response.data.length > 0) {
-          const userBranch = response.data.find(b => b.branch_id === user?.branch_id);
-          setSelectedBranch(userBranch || response.data[0]);
+        const branchData = Array.isArray(response.data) ? response.data : [];
+        setBranches(branchData);
+        if (branchData.length > 0) {
+          const userBranch = branchData.find(b => b.branch_id === user?.branch_id);
+          setSelectedBranch(userBranch || branchData[0]);
         }
       } catch (error) {
         console.error('Error fetching branches:', error);
@@ -98,9 +101,10 @@ const CheckIn = () => {
       const response = await api.get('/checkin/active', {
         params: { branch_id: selectedBranch?.branch_id }
       });
-      setActiveSessions(response.data);
+      setActiveSessions(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching active sessions:', error);
+      setActiveSessions([]);
     }
   }, [selectedBranch]);
 
@@ -470,6 +474,16 @@ const CheckIn = () => {
     const unpaidOvertime = isOverdue && `${session?.overtime_order_status || ''}`.toUpperCase() !== 'PAID';
     return unpaidOvertime || !session?.session_active;
   }).length;
+  const unpaidOvertimeSessions = safeArray(activeSessions).filter((session) => {
+    const { isOverdue } = getOverdueMeta(session || {});
+    return isOverdue && `${session?.overtime_order_status || ''}`.toUpperCase() !== 'PAID';
+  });
+  const awaitingActivationCount = safeArray(activeSessions).filter((session) => !session?.session_active).length;
+  const unpaidOvertimeAmount = unpaidOvertimeSessions.reduce((sum, session) => {
+    const { overtimeAmount } = getOverdueMeta(session || {});
+    return sum + toSafeNumber(session?.overdue_amount, overtimeAmount);
+  }, 0);
+  const nextCheckoutCandidate = unpaidOvertimeSessions[0] || safeArray(activeSessions)[0] || null;
 
   const onlineDevices = safeArray(deviceStatuses).filter((device) => {
     const effective = `${device?.effectiveStatus || device?.status || ''}`.toLowerCase();
@@ -529,6 +543,12 @@ const CheckIn = () => {
               </div>
             </div>
 
+            {commandCenterLoading && (
+              <div className="mb-4 rounded-input border border-dashed border-gray-300 p-3 text-xs text-gray-500">
+                جارِ تحديث لوحة الاستقبال...
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-input border p-3 space-y-2">
                 <p className="font-semibold text-sm">آخر حركات الدخول/الخروج</p>
@@ -569,6 +589,19 @@ const CheckIn = () => {
                 ))}
               </div>
             </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-input border p-3 bg-playful-orange/10 border-playful-orange/30">
+                <p className="text-xs text-gray-600">مستحقات وقت إضافي غير مدفوعة</p>
+                <p className="text-lg font-bold text-playful-orange">{unpaidOvertimeSessions.length} حالة</p>
+                <p className="text-xs text-gray-600">إجمالي تقديري: {formatMoney(unpaidOvertimeAmount)}</p>
+              </div>
+              <div className="rounded-input border p-3 bg-playful-blue/10 border-playful-blue/30">
+                <p className="text-xs text-gray-600">جلسات بانتظار تفعيل السوار</p>
+                <p className="text-lg font-bold text-playful-blue">{awaitingActivationCount} جلسة</p>
+                <p className="text-xs text-gray-600">يرجى تفعيل السوار لتبدأ الجلسة التشغيلية.</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -589,18 +622,41 @@ const CheckIn = () => {
                 </Button>
                 <Button
                   onClick={() => {
-                    const targetSession = safeArray(activeSessions).find((session) => getOverdueMeta(session).isOverdue) || safeArray(activeSessions)[0];
-                    if (targetSession?.session_id) handleCheckOut(targetSession.session_id);
+                    if (nextCheckoutCandidate?.session_id) handleCheckOut(nextCheckoutCandidate.session_id);
                   }}
                   disabled={safeArray(activeSessions).length === 0 || loading}
                   className="h-12 rounded-button bg-playful-orange hover:bg-playful-orange/90 text-white"
                 >
                   <LogOut className="w-4 h-4 ml-2" />
-                  تسجيل خروج سريع
+                  {nextCheckoutCandidate ? `تسجيل خروج: ${nextCheckoutCandidate.child_name || 'جلسة'}` : 'تسجيل خروج سريع'}
                 </Button>
                 <Button onClick={() => navigate('/pos')} variant="outline" className="h-12 rounded-button">
                   <ShoppingCart className="w-4 h-4 ml-2" />
                   فتح نقطة البيع
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => wristbandSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="h-12 rounded-button"
+                >
+                  <Radio className="w-4 h-4 ml-2" />
+                  تعيين/تفعيل سوار
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/events')}
+                  className="h-12 rounded-button"
+                >
+                  <CalendarDays className="w-4 h-4 ml-2" />
+                  تفاصيل الفعاليات
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => sessionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="h-12 rounded-button"
+                >
+                  <Clock className="w-4 h-4 ml-2" />
+                  عرض الجلسات النشطة
                 </Button>
               </CardContent>
             </Card>
@@ -794,7 +850,7 @@ const CheckIn = () => {
           </div>
 
           {/* Active Sessions */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1" ref={sessionsSectionRef}>
             <Card className="peek-card peek-role-panel-admin border-2 border-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -894,7 +950,7 @@ const CheckIn = () => {
             </Card>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6" ref={wristbandSectionRef}>
             <Card className="peek-card border-2 border-gray-200">
               <CardHeader>
                 <CardTitle>سوار QR</CardTitle>
