@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getRoleHomePath } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -26,8 +26,15 @@ const Login = () => {
     { roleLabel: 'Staff', email: 'staff@peekaboo.com', password: 'staff123' }
   ];
 
-  const { login, register, demoLogin } = useAuth();
+  const { login, register, demoLogin, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect already-authenticated users away from login
+  useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      navigate(getRoleHomePath(user.role), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleDemoLogin = (role) => {
     const demoProfiles = {
@@ -61,7 +68,7 @@ const Login = () => {
     };
 
     demoLogin(demoProfiles[role]);
-    navigate('/');
+    navigate(getRoleHomePath(role));
   };
 
   const handleSubmit = async (e) => {
@@ -70,8 +77,9 @@ const Login = () => {
     setLoading(true);
     
     try {
+      let userData;
       if (isRegister) {
-        await register({
+        userData = await register({
           email,
           password,
           display_name: displayName,
@@ -79,10 +87,10 @@ const Login = () => {
           role: 'PARENT'
         });
       } else {
-        await login(email, password);
+        userData = await login(email, password);
       }
       setShowDemoLogin(false);
-      navigate('/');
+      navigate(getRoleHomePath(userData?.role));
     } catch (err) {
       setError(err.response?.data?.detail || 'حدث خطأ');
       if (!isRegister) {

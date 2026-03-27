@@ -10,6 +10,21 @@ export const ROLES = {
   PARENT: 'PARENT'
 };
 
+export const getRoleHomePath = (role) => {
+  const normalized = role?.toUpperCase?.() || '';
+  switch (normalized) {
+    case ROLES.PARENT:
+      return '/parent/dashboard';
+    case ROLES.STAFF:
+    case ROLES.RECEPTION:
+      return '/checkin';
+    case ROLES.ADMIN:
+      return '/';
+    default:
+      return '/login';
+  }
+};
+
 const normalizeRole = (role) => role?.toUpperCase?.() || role;
 
 export const AuthProvider = ({ children }) => {

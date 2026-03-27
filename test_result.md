@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Fix frontend routing/wiring so the UI is usable (no redesign, no refactor, no new deps)."
+user_problem_statement: "Fix the post-login experience so users land in the correct role workspace and can clearly navigate their allowed sections."
 backend:
   - task: "Backend smoke check for frontend integration"
     implemented: true
@@ -120,33 +120,63 @@ backend:
         comment: "Backend smoke tests PASSED - All key endpoints accessible: /api/ (200), /api/health (200, DB connected), auth endpoints responding correctly (401/422), CORS enabled, protected routes working (users/children=401), public routes working (products=200). Backend ready for frontend integration."
 
 frontend:
-  - task: "Fix frontend routing/wiring usability"
+  - task: "Role-based post-login routing"
     implemented: true
-    working: "NA"
-    file: "frontend/src/App.js"
+    working: true
+    file: "frontend/src/pages/Login.js, frontend/src/context/AuthContext.js, frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
-        comment: "Fixed broken route JSX in App.js and wired missing guide routes/imports so app compiles and navigation paths resolve."
+        comment: "Added getRoleHomePath utility; Login.js navigates to role home after login/register/demoLogin. Verified: ADMIN→/, STAFF→/checkin, PARENT→/parent/dashboard."
+  - task: "Persistent role-aware navigation shell"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Created RoleNavShell component with role-based nav items, user info, role badge, logout. Desktop + mobile responsive. Verified all 3 roles see correct nav links."
+  - task: "Unauthorized route handling"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "ProtectedRoute now shows UnauthorizedPage with nav shell, clear message, path info, and role-home link. Verified parent accessing /users sees access denied page."
+  - task: "Catch-all unknown route redirect"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "CatchAllRedirect component redirects unknown routes to role-based home. Verified /some-unknown-page redirects parent to /parent/dashboard."
 
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Backend smoke check for frontend integration"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Implemented frontend routing/wiring fix in App.js and validated build. Please run backend smoke first per protocol."
-  - agent: "testing"
-    message: "Backend smoke tests completed successfully. All core API endpoints (/api/, /api/health, auth routes) are accessible and responding correctly. Database connected. CORS properly configured. Ready for frontend integration testing."
+    message: "Implemented all 4 frontend tasks for role-based post-login experience. All verified via screenshot testing with seeded accounts."
