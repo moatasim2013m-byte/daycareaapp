@@ -188,6 +188,12 @@ const Login = () => {
             </Button>
           </form>
 
+          {!isRegister && (
+            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+              حساب الإدارة الرسمي المعتمد هو: <span dir="ltr" className="font-semibold">admin@peekaboo.com</span>
+            </div>
+          )}
+
           {showDemoLogin && !isRegister && (
             <div className="mt-4 border border-amber-300 bg-amber-50 rounded-xl p-3 space-y-2">
               <p className="text-amber-800 text-sm font-semibold text-center">

@@ -8,6 +8,7 @@ import bcrypt
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
+OFFICIAL_ADMIN_EMAIL = "admin@peekaboo.com"
 
 
 def get_db():
@@ -79,9 +80,27 @@ async def login(
 
     normalized_email = credentials.email.strip().lower()
 
+    if normalized_email == "admin@example.com":
+        logger.warning("Login failed: deprecated admin email used")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"حساب الإدارة الرسمي هو {OFFICIAL_ADMIN_EMAIL} وليس admin@example.com"
+        )
+
     # Find user
     user_doc = await db.users.find_one({"email": normalized_email}, {"_id": 0})
     if not user_doc:
+        users_count = await db.users.count_documents({}, limit=1)
+        if users_count == 0:
+            logger.warning("Login failed: no accounts provisioned in system")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "لا يوجد أي حساب مفعل حالياً. أنشئ أول حساب عبر صفحة التسجيل، "
+                    f"أو قم بتجهيز حساب الإدارة الرسمي ({OFFICIAL_ADMIN_EMAIL})."
+                )
+            )
+
         logger.warning("Login failed: user not found", extra={"email": normalized_email})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
