@@ -30,4 +30,5 @@ async def seed_dev_data(db: AsyncIOMotorDatabase = Depends(get_db)):
         "success": True,
         "message": "Development seed completed",
         "created": result["created"],
+        "demo_accounts": result.get("demo_accounts", []),
     }

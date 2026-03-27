@@ -16,7 +16,16 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDemoLogin, setShowDemoLogin] = useState(false);
-  
+
+
+  const isDevModeEnabled = process.env.REACT_APP_DEV_MODE === 'true';
+
+  const seededDemoAccounts = [
+    { roleLabel: 'Admin', email: 'admin@peekaboo.com', password: 'admin123' },
+    { roleLabel: 'Parent', email: 'parent@peekaboo.com', password: 'parent123' },
+    { roleLabel: 'Staff', email: 'staff@peekaboo.com', password: 'staff123' }
+  ];
+
   const { login, register, demoLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -191,6 +200,19 @@ const Login = () => {
           {!isRegister && (
             <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
               حساب الإدارة الرسمي المعتمد هو: <span dir="ltr" className="font-semibold">admin@peekaboo.com</span>
+            </div>
+          )}
+
+          {!isRegister && isDevModeEnabled && (
+            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+              <p className="font-semibold">حسابات QA (Dev Mode)</p>
+              <ul className="mt-1 space-y-1">
+                {seededDemoAccounts.map((account) => (
+                  <li key={account.email} dir="ltr">
+                    {account.roleLabel}: {account.email} / {account.password}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
