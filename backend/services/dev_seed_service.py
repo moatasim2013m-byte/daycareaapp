@@ -29,6 +29,8 @@ class DevSeedService:
 
         created = {
             "admin": False,
+            "parent": False,
+            "staff": False,
             "branch": False,
             "zones": 0,
             "products": 0,
@@ -36,21 +38,49 @@ class DevSeedService:
             "child": False,
         }
 
-        admin_doc = await self.db.users.find_one({"email": "admin@peekaboo.com"}, {"_id": 0})
-        if not admin_doc:
-            password_hash = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
-            admin = User(
-                email="admin@peekaboo.com",
-                password_hash=password_hash,
-                display_name="Peekaboo Admin",
-                role="ADMIN",
-            )
-            admin_dict = admin.model_dump()
-            admin_dict["created_at"] = admin_dict["created_at"].isoformat()
-            admin_dict["updated_at"] = admin_dict["updated_at"].isoformat()
-            await self.db.users.insert_one(admin_dict)
-            admin_doc = admin_dict
-            created["admin"] = True
+        demo_accounts = [
+            {
+                "key": "admin",
+                "email": "admin@peekaboo.com",
+                "password": "admin123",
+                "display_name": "Peekaboo Admin",
+                "role": "ADMIN",
+            },
+            {
+                "key": "parent",
+                "email": "parent@peekaboo.com",
+                "password": "parent123",
+                "display_name": "Peekaboo Parent",
+                "role": "PARENT",
+            },
+            {
+                "key": "staff",
+                "email": "staff@peekaboo.com",
+                "password": "staff123",
+                "display_name": "Peekaboo Staff",
+                "role": "STAFF",
+            },
+        ]
+
+        users_by_key = {}
+        for account in demo_accounts:
+            user_doc = await self.db.users.find_one({"email": account["email"]}, {"_id": 0})
+            if not user_doc:
+                password_hash = bcrypt.hashpw(account["password"].encode(), bcrypt.gensalt()).decode()
+                user = User(
+                    email=account["email"],
+                    password_hash=password_hash,
+                    display_name=account["display_name"],
+                    role=account["role"],
+                )
+                user_doc = user.model_dump()
+                user_doc["created_at"] = user_doc["created_at"].isoformat()
+                user_doc["updated_at"] = user_doc["updated_at"].isoformat()
+                await self.db.users.insert_one(user_doc)
+                created[account["key"]] = True
+            users_by_key[account["key"]] = user_doc
+
+        admin_doc = users_by_key["admin"]
 
         branch_doc = await self.db.branches.find_one({"name": "Peekaboo Main"}, {"_id": 0})
         if not branch_doc:
@@ -185,4 +215,12 @@ class DevSeedService:
         return {
             "allowed": True,
             "created": created,
+            "demo_accounts": [
+                {
+                    "role": account["role"],
+                    "email": account["email"],
+                    "password": account["password"],
+                }
+                for account in demo_accounts
+            ],
         }
