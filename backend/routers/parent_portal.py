@@ -234,7 +234,8 @@ async def get_parent_payments(
         sort=[("created_at", -1)],
     )
 
-    payments = await db.payments.find({}, {"_id": 0}).sort("created_at", -1).to_list(length=30)
+    payments_query = {"child_id": {"$in": child_ids}} if child_ids else {"_id": {"$exists": False}}
+    payments = await db.payments.find(payments_query, {"_id": 0}).sort("created_at", -1).to_list(length=30)
 
     normalized = []
     for payment in payments:

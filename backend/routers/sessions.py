@@ -11,6 +11,7 @@ from models.pricing_rule import PricingRule
 from middleware.auth import get_current_user, require_role
 from utils.audit import log_audit
 from services.event_logger import eventLogger
+from services.pricing_service import calculateSessionPrice
 from datetime import datetime, timezone, timedelta, time
 import random
 import math

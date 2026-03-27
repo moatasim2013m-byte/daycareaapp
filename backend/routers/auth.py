@@ -167,8 +167,13 @@ async def get_me(
     
     created_at = user_doc.get("created_at")
     if isinstance(created_at, str):
-        created_at = datetime.fromisoformat(created_at)
-    
+        try:
+            created_at = datetime.fromisoformat(created_at)
+        except ValueError:
+            created_at = datetime.now(timezone.utc)
+    if not isinstance(created_at, datetime):
+        created_at = datetime.now(timezone.utc)
+
     return UserResponse(
         user_id=user_doc["user_id"],
         email=user_doc["email"],
