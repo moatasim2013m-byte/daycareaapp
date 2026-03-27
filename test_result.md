@@ -177,10 +177,55 @@ frontend:
         agent: "main"
         comment: "Wired dead buttons in Dashboard.js (Add Child→/parent/messages, Browse Packages→/billing). Added CTAs to 4 ParentDashboard empty states (packages, visits, bookings, messages). Fixed ParentPickups empty state + back link. Enhanced ParentMessages empty guidance."
 
+  - task: "Parent Feed hardening"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ParentFeed.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Removed technical debug UI (childId/roomId inputs). Added date navigator with Arabic date. Added quick stats strip (updates, photos, last update time). Added photo gallery strip. Rich empty state with CTA. Feed items grouped with icons per type. Mobile-first verified."
+  - task: "Daily Report hardening"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ParentDailyReport.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Removed technical debug UI. Added date navigator. Added day summary strip (meals, naps, activities, notes counts). Structured sections: Attendance, Meals, Naps, Mood+Notes, Activities — each with intentional empty placeholders with icons and descriptions. Bottom CTA when all empty."
+  - task: "Messages hardening"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ParentMessages.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Removed technical childId input. Rich empty state with quick-message buttons (Add Child, Packages, Book Session, General). Quick action bubbles persist above compose area. Enter-to-send. Improved chat bubble styling with directional rounded corners. Better notification section with icons."
+  - task: "Pickups hardening"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ParentPickups.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Removed technical childId input. Added safety info banner. Structured authorized persons list with icons, phone/email/relation. Rich empty state with CTA. Added practical safety tips section at bottom. Edit list CTA links to messages."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 4
+  test_sequence: 5
   run_ui: false
 
 test_plan:
