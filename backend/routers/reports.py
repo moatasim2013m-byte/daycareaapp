@@ -15,6 +15,15 @@ def get_db():
     return db
 
 
+def _parse_iso_date(value: str, field_name: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} must be in YYYY-MM-DD format",
+        )
+
 @router.get("/daily-summary")
 async def daily_summary(
     report_date: Optional[str] = None,
@@ -29,7 +38,7 @@ async def daily_summary(
     - Plan sales breakdown
     """
     if report_date:
-        target_date = date.fromisoformat(report_date)
+        target_date = _parse_iso_date(report_date, "report_date")
     else:
         target_date = date.today()
     
@@ -146,8 +155,10 @@ async def revenue_report(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Get revenue report for a date range"""
-    start = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-    end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    start_day = _parse_iso_date(start_date, "start_date")
+    end_day = _parse_iso_date(end_date, "end_date")
+    start = datetime.combine(start_day, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end = datetime.combine(end_day, datetime.max.time()).replace(tzinfo=timezone.utc)
     
     # Get all paid orders in range
     orders = await db.orders.find({
@@ -190,8 +201,10 @@ async def sessions_history_report(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Get sessions history report"""
-    start = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-    end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    start_day = _parse_iso_date(start_date, "start_date")
+    end_day = _parse_iso_date(end_date, "end_date")
+    start = datetime.combine(start_day, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end = datetime.combine(end_day, datetime.max.time()).replace(tzinfo=timezone.utc)
     
     sessions = await db.sessions.find({
         "checkin_at": {
@@ -241,7 +254,7 @@ async def export_daily_csv(
 ):
     """Export daily report as CSV"""
     if report_date:
-        target_date = date.fromisoformat(report_date)
+        target_date = _parse_iso_date(report_date, "report_date")
     else:
         target_date = date.today()
     
@@ -302,8 +315,10 @@ async def export_revenue_csv(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Export revenue report as CSV"""
-    start = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-    end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    start_day = _parse_iso_date(start_date, "start_date")
+    end_day = _parse_iso_date(end_date, "end_date")
+    start = datetime.combine(start_day, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end = datetime.combine(end_day, datetime.max.time()).replace(tzinfo=timezone.utc)
     
     orders = await db.orders.find({
         "status": "PAID",
