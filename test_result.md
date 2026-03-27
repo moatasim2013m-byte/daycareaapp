@@ -165,10 +165,22 @@ frontend:
         agent: "main"
         comment: "CatchAllRedirect component redirects unknown routes to role-based home. Verified /some-unknown-page redirects parent to /parent/dashboard."
 
+  - task: "Fix dead-end UX empty states with actionable CTAs"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Dashboard.js, frontend/src/pages/ParentDashboard.js, frontend/src/pages/ParentPickups.js, frontend/src/pages/ParentMessages.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Wired dead buttons in Dashboard.js (Add Child→/parent/messages, Browse Packages→/billing). Added CTAs to 4 ParentDashboard empty states (packages, visits, bookings, messages). Fixed ParentPickups empty state + back link. Enhanced ParentMessages empty guidance."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 4
   run_ui: false
 
 test_plan:

@@ -506,7 +506,7 @@ const Dashboard = () => {
             <CardHeader><CardTitle className="flex items-center gap-2"><Baby className="w-5 h-5 text-blue-500" />أطفالي</CardTitle></CardHeader>
             <CardContent>
               {safeChildren.length === 0 ? (
-                <div className="peek-empty"><p className="text-gray-500 mb-4">لم تقم بإضافة أطفال بعد</p><Button variant="outline">إضافة طفل</Button></div>
+                <div className="peek-empty"><p className="text-gray-500 mb-4">لم تقم بإضافة أطفال بعد</p><Button asChild variant="outline"><Link to="/parent/messages">إضافة طفل</Link></Button></div>
               ) : (
                 <div className="space-y-3">{safeChildren.map((child) => (<div key={child.child_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><div><p className="font-medium">{child.full_name}</p><p className="text-sm text-gray-500">{child.age_years} سنوات</p></div><Button variant="outline" size="sm">عرض</Button></div>))}</div>
               )}
@@ -516,7 +516,7 @@ const Dashboard = () => {
           <Card className="peek-card peek-role-panel-admin">
             <CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5 text-green-500" />الباقات والاشتراكات</CardTitle></CardHeader>
             <CardContent>
-              <div className="peek-empty"><p className="text-gray-500 mb-4">شراء اشتراك أو باقة زيارات</p><Button className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">تصفح الباقات</Button></div>
+              <div className="peek-empty"><p className="text-gray-500 mb-4">شراء اشتراك أو باقة زيارات</p><Button asChild className="bg-gradient-to-r from-blue-500 to-purple-500 text-white"><Link to="/billing">تصفح الباقات</Link></Button></div>
             </CardContent>
           </Card>
         </div>

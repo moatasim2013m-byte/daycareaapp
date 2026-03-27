@@ -354,6 +354,14 @@ const ParentDashboard = () => {
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-600">
                   <p className="font-medium text-gray-900">لا توجد باقة نشطة ظاهرة الآن.</p>
                   <p className="mt-1">يمكنك تصفح الباقات أو مراسلة الفريق لمعرفة الأنسب لطفلك.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/billing">تصفح الباقات</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/parent/messages">مراسلة الفريق</Link>
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -375,6 +383,11 @@ const ParentDashboard = () => {
               {recentVisits.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-600">
                   لا توجد زيارات حديثة حتى الآن. عند تسجيل أول حضور سيظهر هنا وقت الدخول والخروج.
+                  <div className="mt-3">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/parent/daily-report">عرض التقرير اليومي</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 recentVisits.map((visit) => (
@@ -444,6 +457,11 @@ const ParentDashboard = () => {
               {!upcomingVisit && !upcomingEvent ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-600">
                   لا يوجد حجز أو فعالية قادمة الآن. راجع الرسائل أو تواصل مع المركز إذا كنت تنتظر تأكيدًا.
+                  <div className="mt-3">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/parent/messages">مراسلة المركز</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -484,6 +502,11 @@ const ParentDashboard = () => {
               {!latestMessage ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-600">
                   لا توجد رسائل بعد. يمكنك فتح الرسائل للسؤال عن إضافة طفل أو الباقات أو أي تحديث يخص الحضور.
+                  <div className="mt-3">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/parent/messages">فتح الرسائل</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-gray-100 p-4">

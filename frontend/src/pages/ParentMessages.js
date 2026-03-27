@@ -153,7 +153,7 @@ const ParentMessages = () => {
             {messages.length === 0 ? (
               <div className="peek-empty">
                 <p className="text-lg font-medium text-gray-700">لا توجد رسائل بعد 💛</p>
-                <p className="mt-1 text-sm text-gray-500">ابدأ المحادثة بإرسال رسالة قصيرة إلى الحضانة.</p>
+                <p className="mt-1 text-sm text-gray-500">ابدأ المحادثة بإرسال رسالة قصيرة إلى الحضانة — مثلاً: إضافة طفل، الاستفسار عن الباقات، أو أي سؤال.</p>
               </div>
             ) : (
               messages.map((message) => {

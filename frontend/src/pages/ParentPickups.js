@@ -39,7 +39,11 @@ const ParentPickups = () => {
 
           <div className="space-y-2">
             {authorizedPickups.length === 0 ? (
-              <div className="peek-empty">لا يوجد مخولون مسجلون حالياً 💛</div>
+              <div className="peek-empty">
+                <p>لا يوجد مخولون مسجلون حالياً 💛</p>
+                <p className="mt-1 text-sm text-gray-500">تواصل مع المركز لإضافة أشخاص مخولين باستلام طفلك.</p>
+                <Link to="/parent/messages" className="mt-3 inline-block text-blue-600 hover:text-blue-700 text-sm font-medium">مراسلة المركز ←</Link>
+              </div>
             ) : (
               authorizedPickups.map((pickup) => (
                 <div key={pickup.id} className="peek-feed-item p-3">
@@ -51,7 +55,7 @@ const ParentPickups = () => {
           </div>
         </div>
 
-        <Link to="/" className="inline-block text-blue-700 hover:text-blue-800 font-medium">العودة إلى لوحة التحكم</Link>
+        <Link to="/parent/dashboard" className="inline-block text-blue-700 hover:text-blue-800 font-medium">العودة إلى لوحة التحكم</Link>
       </div>
     </div>
   );
