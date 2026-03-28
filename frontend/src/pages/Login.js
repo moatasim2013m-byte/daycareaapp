@@ -77,9 +77,9 @@ const Login = () => {
     setLoading(true);
     
     try {
-      let userData;
+      let authUser;
       if (isRegister) {
-        userData = await register({
+        authUser = await register({
           email,
           password,
           display_name: displayName,
@@ -87,12 +87,21 @@ const Login = () => {
           role: 'PARENT'
         });
       } else {
-        userData = await login(email, password);
+        authUser = await login(email, password);
       }
+
+      if (!authUser?.role) {
+        throw new Error('لم يتم تحديد صلاحية المستخدم من الخادم');
+      }
+
       setShowDemoLogin(false);
-      navigate(getRoleHomePath(userData?.role));
+      navigate(getRoleHomePath(authUser.role), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.detail || 'حدث خطأ');
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          'تعذر تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.'
+      );
       if (!isRegister) {
         setShowDemoLogin(true);
       }
