@@ -27,6 +27,29 @@ export const getRoleHomePath = (role) => {
 
 const normalizeRole = (role) => role?.toUpperCase?.() || role;
 
+const extractAuthData = (payload) => {
+  const token = payload?.access_token || payload?.token;
+  const rawUser = payload?.user || payload;
+  const normalizedUser = rawUser
+    ? {
+        ...rawUser,
+        role: normalizeRole(rawUser?.role || rawUser?.user_role),
+      }
+    : null;
+
+  if (!token || !normalizedUser?.role) {
+    throw new Error('Invalid authentication response');
+  }
+
+  return { token, user: normalizedUser };
+};
+
+const persistAuthSession = ({ token, user: userData }) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(userData));
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,35 +73,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { access_token, user: userData } = response.data;
-    
-    localStorage.setItem('token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    
-    setUser({ ...userData, role: normalizeRole(userData?.role) });
-    return userData;
+    const authData = extractAuthData(response.data);
+
+    persistAuthSession(authData);
+    setUser(authData.user);
+    return authData.user;
   };
 
   const demoLogin = ({ token, user: userData }) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-    setUser({ ...userData, role: normalizeRole(userData?.role) });
-    return userData;
+    const authData = extractAuthData({ token, user: userData });
+    persistAuthSession(authData);
+    setUser(authData.user);
+    return authData.user;
   };
 
   const register = async (data) => {
     const response = await api.post('/auth/register', data);
-    const { access_token, user: userData } = response.data;
-    
-    localStorage.setItem('token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    
-    setUser({ ...userData, role: normalizeRole(userData?.role) });
-    return userData;
+    const authData = extractAuthData(response.data);
+
+    persistAuthSession(authData);
+    setUser(authData.user);
+    return authData.user;
   };
 
   const logout = () => {
