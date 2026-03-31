@@ -22,6 +22,18 @@ class DailyReportCreate(BaseModel):
     photo_url: Optional[str] = None
 
 
+class ReplyCreate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1000)
+
+
+class ReplyItem(BaseModel):
+    reply_id: str
+    parent_id: str
+    parent_name: str
+    text: str
+    created_at: str
+
+
 class DailyReportResponse(BaseModel):
     report_id: str
     child_id: str
@@ -32,6 +44,8 @@ class DailyReportResponse(BaseModel):
     photo_url: Optional[str] = None
     report_ar: str
     report_en: str
+    session_id: Optional[str] = None
+    replies: List[ReplyItem] = []
     created_at: str
 
 
@@ -43,7 +57,7 @@ async def create_daily_report(
     user: dict = Depends(require_role("ADMIN", "STAFF")),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Teacher creates a daily report. Gemini generates bilingual summary."""
+    """Teacher creates a daily report. Gemini generates bilingual summary. Auto-links to active session."""
     if db is None:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -52,6 +66,25 @@ async def create_daily_report(
     if not child_name:
         child_doc = await db.children.find_one({"child_id": body.child_id}, {"_id": 0, "full_name": 1, "name": 1})
         child_name = (child_doc or {}).get("full_name") or (child_doc or {}).get("name") or f"Child {body.child_id}"
+
+    # Auto-link to active session for this child
+    session_id = None
+    active_session = await db.sessions.find_one(
+        {"child_id": body.child_id, "state": {"$in": ["CHECKED_IN", "ACTIVE", "OVERDUE"]}},
+        {"_id": 0, "session_id": 1},
+        sort=[("checkin_at", -1)],
+    )
+    if active_session:
+        session_id = active_session.get("session_id")
+    else:
+        # Also check checkin_sessions collection
+        active_checkin = await db.checkin_sessions.find_one(
+            {"child_id": body.child_id, "status": {"$in": ["CHECKED_IN", "ACTIVE"]}},
+            {"_id": 0, "session_id": 1},
+            sort=[("check_in_time", -1)],
+        )
+        if active_checkin:
+            session_id = active_checkin.get("session_id")
 
     # Generate bilingual report via Gemini
     from services.gemini_service import generate_daily_report
@@ -74,6 +107,8 @@ async def create_daily_report(
         "photo_url": body.photo_url,
         "report_ar": generated["report_ar"],
         "report_en": generated["report_en"],
+        "session_id": session_id,
+        "replies": [],
         "created_at": now,
     }
 
@@ -101,8 +136,58 @@ async def create_daily_report(
         "photo_url": body.photo_url,
         "report_ar": generated["report_ar"],
         "report_en": generated["report_en"],
+        "session_id": session_id,
+        "replies": [],
         "created_at": now,
     }
+
+
+@router.get("/{report_id}", response_model=DailyReportResponse)
+async def get_single_report(
+    report_id: str,
+    user: dict = Depends(require_role("PARENT", "ADMIN", "STAFF")),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Get a single report with all replies."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    report = await db.daily_reports.find_one({"report_id": report_id}, {"_id": 0})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return report
+
+
+@router.post("/{report_id}/reply", response_model=ReplyItem, status_code=status.HTTP_201_CREATED)
+async def add_reply(
+    report_id: str,
+    body: ReplyCreate,
+    user: dict = Depends(require_role("PARENT", "ADMIN", "STAFF")),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Parent or staff adds a text reply to a daily report."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    report = await db.daily_reports.find_one({"report_id": report_id}, {"_id": 0, "report_id": 1})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    reply = {
+        "reply_id": str(uuid.uuid4()),
+        "parent_id": user.get("user_id", ""),
+        "parent_name": user.get("display_name") or user.get("email", "User"),
+        "text": body.text.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.daily_reports.update_one(
+        {"report_id": report_id},
+        {"$push": {"replies": reply}},
+    )
+
+    return reply
 
 
 @router.get("/child/{child_id}", response_model=List[DailyReportResponse])
