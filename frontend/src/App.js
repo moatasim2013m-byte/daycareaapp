@@ -25,12 +25,14 @@ import ParentMessages from './pages/ParentMessages';
 import ParentPickups from './pages/ParentPickups';
 import EventBooking from './pages/EventBooking';
 import TeacherDailyReport from './pages/TeacherDailyReport';
+import TeacherLessonPlanner from './pages/TeacherLessonPlanner';
+import TeacherObservations from './pages/TeacherObservations';
 
 import {
   Baby, LogOut, LayoutDashboard, UserCheck, ShoppingBag,
   UsersRound, Building2, MapPin, Receipt, CalendarDays,
   ClipboardList, MessageSquare, UserCheck2, Rss, FileText,
-  Mail, Car, Menu, X, Sparkles
+  Mail, Car, Menu, X, Sparkles, BookOpen, Eye
 } from 'lucide-react';
 
 /* ─── Navigation definitions per role ─── */
@@ -54,6 +56,8 @@ const NAV_ITEMS = {
     { to: '/teacher/messages', label: 'الرسائل', icon: MessageSquare },
     { to: '/teacher/pickup-check', label: 'الاستلام', icon: Car },
     { to: '/teacher/daily-report', label: 'تقرير AI', icon: Sparkles },
+    { to: '/teacher/lesson-planner', label: 'خطط الدروس', icon: BookOpen },
+    { to: '/teacher/observations', label: 'الملاحظات', icon: Eye },
   ], [ROLES.RECEPTION]: [
     { to: '/checkin', label: 'تسجيل الحضور', icon: UserCheck },
     { to: '/pos', label: 'نقطة البيع', icon: ShoppingBag },
@@ -413,6 +417,24 @@ function App() {
             element={
               <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <RoleNavShell><TeacherDailyReport /></RoleNavShell>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/teacher/lesson-planner"
+            element={
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
+                <RoleNavShell><TeacherLessonPlanner /></RoleNavShell>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/teacher/observations"
+            element={
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
+                <RoleNavShell><TeacherObservations /></RoleNavShell>
               </ProtectedRoute>
             }
           />

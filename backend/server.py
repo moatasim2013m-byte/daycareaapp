@@ -168,6 +168,13 @@ async def create_indexes():
     await db.invoices.create_index([("child_id", 1), ("created_at", -1)])
     await db.invoices.create_index([("guardian_id", 1), ("status", 1)])
 
+    # Learning & Assessment
+    await db.lessons.create_index("lesson_id", unique=True)
+    await db.lessons.create_index([("teacher_id", 1), ("created_at", -1)])
+    await db.observations.create_index("observation_id", unique=True)
+    await db.observations.create_index([("child_id", 1), ("created_at", -1)])
+    await db.observations.create_index([("teacher_id", 1), ("created_at", -1)])
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -217,6 +224,7 @@ from routers import (
     entitlements,
     events,
     households,
+    learning,
     orders,
     parent_portal,
     products,
@@ -249,6 +257,7 @@ api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
 api_router.include_router(billing.router)
+api_router.include_router(learning.router)
 api_router.include_router(daily_reports.router)
 api_router.include_router(analytics.router)
 api_router.include_router(parent_portal.router)

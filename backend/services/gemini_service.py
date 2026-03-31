@@ -67,3 +67,64 @@ async def generate_daily_report(child_name: str, teacher_notes: str, photo_url: 
             "report_ar": f"تقرير يومي عن {child_name}: {teacher_notes}",
             "report_en": f"Daily report for {child_name}: {teacher_notes}",
         }
+
+
+LESSON_PLAN_PROMPT = """You are an expert early childhood education curriculum designer. Generate a structured, age-appropriate lesson plan for a daycare/preschool setting.
+
+Rules:
+1. Always output BOTH Arabic and English versions.
+2. Structure the plan into: Objective, Materials, Introduction (5 min), Main Activity (details), Wrap-up, Assessment Tips.
+3. Keep language practical and teacher-friendly.
+4. Adapt complexity to the specified age group.
+5. Format as JSON with keys: "plan_ar" (Arabic) and "plan_en" (English).
+6. Each value should be a complete, formatted lesson plan text.
+7. Do NOT include markdown code blocks. Return ONLY valid JSON.
+
+Example output:
+{"plan_ar": "الهدف: ... المواد: ... المقدمة: ...", "plan_en": "Objective: ... Materials: ... Introduction: ..."}"""
+
+
+async def generate_lesson_plan(topic: str, age_group: str, duration_minutes: int = 30, objectives: str = "") -> dict:
+    """Generate a bilingual lesson plan using Gemini."""
+    if not GEMINI_API_KEY:
+        return {
+            "plan_ar": f"خطة درس عن: {topic} — الفئة العمرية: {age_group}",
+            "plan_en": f"Lesson plan about: {topic} — Age group: {age_group}",
+        }
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        session_id = f"lesson-plan-{uuid.uuid4().hex[:8]}"
+
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=session_id,
+            system_message=LESSON_PLAN_PROMPT,
+        ).with_model("gemini", "gemini-2.5-flash")
+
+        prompt = f"Topic: {topic}\nAge group: {age_group}\nDuration: {duration_minutes} minutes"
+        if objectives:
+            prompt += f"\nLearning objectives: {objectives}"
+
+        user_message = UserMessage(text=prompt)
+        response = await chat.send_message(user_message)
+
+        import json
+        response_text = response.strip()
+        if response_text.startswith("```"):
+            lines = response_text.split("\n")
+            response_text = "\n".join(lines[1:-1]) if len(lines) > 2 else response_text
+
+        parsed = json.loads(response_text)
+        return {
+            "plan_ar": parsed.get("plan_ar", f"خطة درس عن {topic}"),
+            "plan_en": parsed.get("plan_en", f"Lesson plan about {topic}"),
+        }
+
+    except Exception as exc:
+        print(f"Gemini lesson plan error: {exc}")
+        return {
+            "plan_ar": f"خطة درس عن: {topic} — الفئة العمرية: {age_group}",
+            "plan_en": f"Lesson plan about: {topic} — Age group: {age_group}",
+        }
