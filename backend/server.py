@@ -156,6 +156,11 @@ async def create_indexes():
     # Customers
     await db.customers.create_index("household_id")
 
+    # Daily Reports (AI-generated)
+    await db.daily_reports.create_index("report_id", unique=True)
+    await db.daily_reports.create_index([("child_id", 1), ("created_at", -1)])
+    await db.daily_reports.create_index([("teacher_id", 1), ("created_at", -1)])
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -199,6 +204,7 @@ from routers import (
     checkin,
     children,
     customers,
+    daily_reports,
     devices,
     entitlements,
     events,
@@ -234,6 +240,7 @@ api_router.include_router(devices.router)
 api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
+api_router.include_router(daily_reports.router)
 api_router.include_router(analytics.router)
 api_router.include_router(parent_portal.router)
 api_router.include_router(users.router)

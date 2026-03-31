@@ -24,12 +24,13 @@ import ParentDailyReport from './pages/ParentDailyReport';
 import ParentMessages from './pages/ParentMessages';
 import ParentPickups from './pages/ParentPickups';
 import EventBooking from './pages/EventBooking';
+import TeacherDailyReport from './pages/TeacherDailyReport';
 
 import {
   Baby, LogOut, LayoutDashboard, UserCheck, ShoppingBag,
   UsersRound, Building2, MapPin, Receipt, CalendarDays,
   ClipboardList, MessageSquare, UserCheck2, Rss, FileText,
-  Mail, Car, Menu, X
+  Mail, Car, Menu, X, Sparkles
 } from 'lucide-react';
 
 /* ─── Navigation definitions per role ─── */
@@ -52,8 +53,8 @@ const NAV_ITEMS = {
     { to: '/teacher/attendance', label: 'الحضور', icon: UserCheck2 },
     { to: '/teacher/messages', label: 'الرسائل', icon: MessageSquare },
     { to: '/teacher/pickup-check', label: 'الاستلام', icon: Car },
-  ],
-  [ROLES.RECEPTION]: [
+    { to: '/teacher/daily-report', label: 'تقرير AI', icon: Sparkles },
+  ], [ROLES.RECEPTION]: [
     { to: '/checkin', label: 'تسجيل الحضور', icon: UserCheck },
     { to: '/pos', label: 'نقطة البيع', icon: ShoppingBag },
     { to: '/events', label: 'الفعاليات', icon: CalendarDays },
@@ -402,6 +403,15 @@ function App() {
             element={
               <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
                 <RoleNavShell><TeacherPickupCheck /></RoleNavShell>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/teacher/daily-report"
+            element={
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]}>
+                <RoleNavShell><TeacherDailyReport /></RoleNavShell>
               </ProtectedRoute>
             }
           />
