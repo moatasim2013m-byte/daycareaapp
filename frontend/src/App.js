@@ -64,6 +64,7 @@ const NAV_ITEMS = {
     { to: '/parent/feed', label: 'الخلاصة', icon: Rss },
     { to: '/parent/daily-report', label: 'التقرير اليومي', icon: FileText },
     { to: '/parent/messages', label: 'الرسائل', icon: Mail },
+    { to: '/billing', label: 'الفوترة', icon: Receipt },
     { to: '/parent/pickups', label: 'الاستلام', icon: Car },
   ],
 };

@@ -161,6 +161,13 @@ async def create_indexes():
     await db.daily_reports.create_index([("child_id", 1), ("created_at", -1)])
     await db.daily_reports.create_index([("teacher_id", 1), ("created_at", -1)])
 
+    # Billing
+    await db.fee_plans.create_index("plan_id", unique=True)
+    await db.fee_plans.create_index([("child_id", 1), ("active", 1)])
+    await db.invoices.create_index("invoice_id", unique=True)
+    await db.invoices.create_index([("child_id", 1), ("created_at", -1)])
+    await db.invoices.create_index([("guardian_id", 1), ("status", 1)])
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -200,6 +207,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 from routers import (
     analytics,
     auth,
+    billing,
     branches,
     checkin,
     children,
@@ -240,6 +248,7 @@ api_router.include_router(devices.router)
 api_router.include_router(wristbands.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(reports.router)
+api_router.include_router(billing.router)
 api_router.include_router(daily_reports.router)
 api_router.include_router(analytics.router)
 api_router.include_router(parent_portal.router)
