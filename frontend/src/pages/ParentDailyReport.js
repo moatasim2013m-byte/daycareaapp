@@ -7,8 +7,9 @@ import { resolveCachedChildContext } from '../utils/childContext';
 import {
   FileText, CalendarDays, UserCheck, Utensils, Moon,
   SmilePlus, StickyNote, Activity, Camera, ChevronLeft,
-  ChevronRight, MessageSquare
+  ChevronRight, MessageSquare, Sparkles, Globe
 } from 'lucide-react';
+import api from '../services/api';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -87,11 +88,25 @@ const EmptySection = ({ icon: Icon, iconColor, title, description }) => (
 const ParentDailyReport = () => {
   const [childId, setChildId] = useState('1');
   const [selectedDate, setSelectedDate] = useState(getToday());
+  const [aiReports, setAiReports] = useState([]);
+  const [showEnglish, setShowEnglish] = useState(false);
 
   useEffect(() => {
     const context = resolveCachedChildContext();
     if (context?.childId) setChildId(context.childId);
   }, []);
+
+  // Fetch AI reports for this child
+  useEffect(() => {
+    if (!childId) return;
+    const fetchAiReports = async () => {
+      try {
+        const res = await api.get(`/daily-reports/child/${childId}`);
+        setAiReports(Array.isArray(res.data) ? res.data : []);
+      } catch { setAiReports([]); }
+    };
+    fetchAiReports();
+  }, [childId]);
 
   const shiftDate = (days) => {
     const d = new Date(selectedDate + 'T00:00:00');
@@ -400,6 +415,68 @@ const ParentDailyReport = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* AI-Generated Reports from Teachers */}
+        {aiReports.length > 0 && (
+          <Card className="peek-card border-purple-200">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  تقارير المعلمة
+                  <Badge variant="secondary" className="text-xs">{aiReports.length}</Badge>
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setShowEnglish(false)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${!showEnglish ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    عربي
+                  </button>
+                  <button
+                    onClick={() => setShowEnglish(true)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${showEnglish ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    English
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {aiReports.filter((r) => {
+                const reportDate = r.created_at ? r.created_at.slice(0, 10) : '';
+                return reportDate === selectedDate;
+              }).length > 0 ? (
+                aiReports
+                  .filter((r) => (r.created_at || '').slice(0, 10) === selectedDate)
+                  .map((report) => (
+                    <div key={report.report_id} className="rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 p-4 border border-purple-100">
+                      {report.photo_url && (
+                        <img src={report.photo_url} alt="" className="w-full max-h-40 object-cover rounded-xl mb-3 border border-gray-200" />
+                      )}
+                      <div className="flex items-center gap-2 mb-2">
+                        <Globe className="w-3.5 h-3.5 text-purple-400" />
+                        <span className="text-xs font-medium text-purple-600">
+                          {report.teacher_name || 'المعلمة'} • {new Date(report.created_at).toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dir={showEnglish ? 'ltr' : 'rtl'}>
+                        {showEnglish ? report.report_en : report.report_ar}
+                      </p>
+                    </div>
+                  ))
+              ) : (
+                <div className="flex items-start gap-3 rounded-xl border border-dashed border-purple-200 bg-purple-50/50 p-4">
+                  <Sparkles className="w-5 h-5 text-purple-300 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">لا توجد تقارير من المعلمة لهذا اليوم</p>
+                    <p className="text-xs text-gray-400 mt-0.5">عندما ترسل المعلمة تقريراً يومياً ستجده هنا بالعربية والإنجليزية.</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* All-empty message at bottom */}
         {logs.length === 0 && activities.length === 0 && !attendanceSummary && (
