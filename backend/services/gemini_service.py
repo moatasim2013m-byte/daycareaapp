@@ -49,11 +49,17 @@ async def generate_daily_report(child_name: str, teacher_notes: str, photo_url: 
 
         # Parse JSON from response
         import json
+        import re
         response_text = response.strip()
         # Handle markdown code blocks if present
         if response_text.startswith("```"):
             lines = response_text.split("\n")
             response_text = "\n".join(lines[1:-1]) if len(lines) > 2 else response_text
+
+        # Extract JSON object robustly
+        match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if match:
+            response_text = match.group(0)
 
         parsed = json.loads(response_text)
         return {
@@ -111,10 +117,16 @@ async def generate_lesson_plan(topic: str, age_group: str, duration_minutes: int
         response = await chat.send_message(user_message)
 
         import json
+        import re
         response_text = response.strip()
         if response_text.startswith("```"):
             lines = response_text.split("\n")
             response_text = "\n".join(lines[1:-1]) if len(lines) > 2 else response_text
+
+        # Extract JSON object robustly — find first { to last }
+        match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if match:
+            response_text = match.group(0)
 
         parsed = json.loads(response_text)
         return {
